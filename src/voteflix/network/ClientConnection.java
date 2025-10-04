@@ -67,9 +67,13 @@ public class ClientConnection {
                 switch (choice) {
                     case "1":
                         service.handleLogout();
-                        // Após logout, encerra o cliente
-                        System.out.println("\n>>> Conexão encerrada pelo servidor após logout.");
-                        running = false;
+                        if (service.getCurrentToken() == null) {
+                            // Só encerra se o token foi limpo (logout bem-sucedido)
+                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
+                            running = false;
+                        } else {
+                            System.out.println("\n>>> Falha no logout do usuario");
+                        }
                         break;
                     case "2":
                         service.handleListarProprioUsuario();
@@ -79,10 +83,13 @@ public class ClientConnection {
                         break;
                     case "4":
                         service.handleExcluirProprioUsuario();
-                        // Após exclusão, encerra o cliente
-                        System.out.println("\n>>> Conexão encerrada pelo servidor após exclusão de conta.");
-                        running = false;
-
+                        if (service.getCurrentToken() == null) {
+                            // Só encerra se o token foi limpo (logout bem-sucedido)
+                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
+                            running = false;
+                        } else {
+                            System.out.println("\n>>> Falha na confirmacao da exclusao do usuario");
+                        }
                         break;
                     case "5":
                         running = false;

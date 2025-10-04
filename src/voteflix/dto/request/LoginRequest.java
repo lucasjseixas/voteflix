@@ -9,6 +9,7 @@ public class LoginRequest extends RequestBase {
 
     @SerializedName("senha")
     public String senha;
+
     public LoginRequest() {}
 
     public LoginRequest(String usuario, String senha) {

@@ -137,16 +137,20 @@ public class ServerConnection extends Thread {
                 out.println(finalResponse);
 
                 // Condição para fechar a thread
-                boolean isLogout = reqBase != null && "LOGOUT".equals(reqBase.getOperacao());
-                boolean isExcluir = reqBase != null && "EXCLUIR_PROPRIO_USUARIO".equals(reqBase.getOperacao());
+                boolean isLogoutSucesso = reqBase != null &&
+                        "LOGOUT".equals(reqBase.getOperacao()) &&
+                        "200".equals(statusFinal);
 
+                boolean isExcluirSucesso = reqBase != null &&
+                        "EXCLUIR_PROPRIO_USUARIO".equals(reqBase.getOperacao()) &&
+                        "200".equals(statusFinal);
 
-                if ("400".equals(statusFinal) || isLogout || isExcluir) {
-                    if (isLogout) {
-                        System.out.println(">>> LOGOUT detectado - Encerrando conexão com cliente.");
+                if (isLogoutSucesso || isExcluirSucesso) {
+                    if (isLogoutSucesso) {
+                        System.out.println(">>> LOGOUT BEM-SUCEDIDO - Encerrando conexão com cliente.");
                     }
-                    if (isExcluir) {
-                        System.out.println(">>> EXCLUSÃO DE CONTA detectada - Encerrando conexão com cliente.");
+                    if (isExcluirSucesso) {
+                        System.out.println(">>> EXCLUSÃO DE CONTA BEM-SUCEDIDA - Encerrando conexão com cliente.");
                     }
                     break; // Encerra o loop e a thread
                 }
