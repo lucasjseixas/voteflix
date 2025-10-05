@@ -7,6 +7,7 @@ module testvoteflix {
     exports voteflix.service;
     exports voteflix.dto.request;
     exports voteflix.dto.response;
+    exports voteflix.dto;  // ← ADICIONAR
     exports voteflix.repository;
     exports voteflix.util;
 }

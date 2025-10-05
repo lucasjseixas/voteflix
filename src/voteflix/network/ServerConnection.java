@@ -11,7 +11,7 @@ import voteflix.util.JsonValidator;
 public class ServerConnection extends Thread {
 
     protected Socket clientSocket;
-    private static final Gson GSON = new Gson(); // Instância de Gson
+    private static final Gson GSON = new Gson(); // Instancia de Gson
     private static final ServerService SERVICE = new ServerService();
 
     public static void main(String[] args) throws IOException {

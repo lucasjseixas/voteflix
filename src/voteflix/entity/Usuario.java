@@ -20,10 +20,7 @@ public class Usuario {
 
     // Método para o usuário administrador pré-cadastrado
     public static Usuario createAdmin(String senha) {
-        // ID estático garantido para o admin
-        Usuario admin = new Usuario(0, "admin", senha, "admin");
-        nextId.set(1); // Reinicia o contador para que os usuários comuns comecem em 1
-        return admin;
+        return new Usuario(0, "admin", senha, "admin");
     }
 
     // Construtor privado para o admin pré-cadastrado

@@ -31,8 +31,7 @@ public class ClientService {
         this.in = in;
         this.stdIn = stdIn;
     }
-
-
+    
     // Getters para a classe do loop principal (para controle de menu)
     public String getCurrentToken() {
         return currentToken;
