@@ -6,6 +6,7 @@ import com.google.gson.Gson; // Importação necessária
 import voteflix.service.ServerService;
 import voteflix.dto.request.RequestBase; // Importação necessária
 import voteflix.dto.response.ResponsePadrao; // Importação necessária
+import voteflix.util.JsonValidator;
 
 public class ServerConnection extends Thread {
 
@@ -78,6 +79,14 @@ public class ServerConnection extends Thread {
                 String finalResponse = SERVICE.createStatusResponse("500");
                 String statusFinal = "500";
                 RequestBase reqBase = null;
+
+                // *** VALIDAÇÃO DO JSON ***
+                if (!JsonValidator.validateComplete(inputLine)) {
+                    System.err.println(">>> JSON INVÁLIDO - Violação do padrão de nomenclatura");
+                    finalResponse = SERVICE.createStatusResponse("400");
+                    out.println(finalResponse);
+                    continue; // Pula para próxima iteração, mantém conexão
+                }
 
                 try {
                     // --- 2. DESSERIALIZAÇÃO PARA CLASSE BASE (IDENTIFICAR OPERAÇÃO) ---

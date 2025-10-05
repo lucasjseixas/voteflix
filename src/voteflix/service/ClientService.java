@@ -1,14 +1,15 @@
 package voteflix.service;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-
 import com.google.gson.Gson;
 import voteflix.auth.AuthResponse;
 import voteflix.dto.request.*;
 import voteflix.dto.response.ListarProprioUsuarioResponse;
 import voteflix.dto.response.ResponsePadrao;
+import voteflix.util.HttpStatus;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 public class ClientService {
 
@@ -30,6 +31,7 @@ public class ClientService {
         this.in = in;
         this.stdIn = stdIn;
     }
+
 
     // Getters para a classe do loop principal (para controle de menu)
     public String getCurrentToken() {
@@ -59,10 +61,12 @@ public class ClientService {
             try {
                 AuthResponse res = GSON.fromJson(jsonResponse, AuthResponse.class);
 
-                if ("200".equals(res.getStatus())) {
+                HttpStatus status = HttpStatus.fromCode(res.getStatus());
+                if (status == HttpStatus.OK) {
                     currentToken = res.getToken();
+                    System.out.println(status.getFormattedMessage());
                 } else {
-                    System.out.println("Login falhou. Status retornado: " + res.getStatus());
+                    System.err.println(status.getFormattedMessage());
                     currentToken = null;
                 }
             } catch (Exception e) {
@@ -90,17 +94,17 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                if ("200".equals(res.getStatus())) {
-                    System.out.println("Logout bem-sucedido.");
-                    currentToken = null;
-                    currentFuncao = null;
-                    currentUsuario = null;
-                    currentIdUsuario = -1;
+                if (status == HttpStatus.OK) {
+                    System.out.println(status.getFormattedMessage());
                 } else {
-                    System.err.println("Logout falhou no servidor (Status: " + res.getStatus() + "). Removendo token local por segurança.");
-                    currentToken = null; currentFuncao = null; currentUsuario = null; currentIdUsuario = -1;
+                    System.err.println(status.getFormattedMessage() + " Removendo token local por segurança.");
                 }
+                currentToken = null;
+                currentFuncao = null;
+                currentUsuario = null;
+                currentIdUsuario = -1;
             } catch (Exception e) {
                 System.err.println("Erro ao processar o JSON de resposta do servidor: " + e.getMessage());
             }
@@ -131,19 +135,14 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                String status = res.getStatus();
-
-                switch (status) {
-                    case "201" ->  // **SUCESSO (CREATED)**
-                            System.out.println("Cadastro de usuário BEM-SUCEDIDO. 201");
-                    case "400" -> System.out.println("400 Bad Request");
-                    case "409" -> System.out.println("409 Already exists");
-                    case "422" -> System.out.println("422 Unprocessable Entity");
-                    case "500" -> System.out.println("500 Internal Server Error");
-                    case null, default -> System.out.println("Status retornado: " + status);
+                HttpStatus status = HttpStatus.fromCode(res.getStatus());
+                if (status.isSuccess()) {
+                    System.out.println(status.getFormattedMessage());
+                } else {
+                    System.err.println(status.getFormattedMessage());
                 }
             } catch (Exception e) {
-                System.err.println("ERRO: Falha na desserialização da resposta do servidor: " + e.getMessage());
+                System.err.println("ERRO: Falha ao processar resposta: " + e.getMessage());
             }
         }
     }
@@ -166,18 +165,20 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ListarProprioUsuarioResponse res = GSON.fromJson(jsonResponse, ListarProprioUsuarioResponse.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if ("200".equals(res.status)) {
+                if (status == HttpStatus.OK) {
                     System.out.println("\n--- DADOS DO USUÁRIO ---");
                     System.out.println("Usuário: " + res.usuario);
                 } else {
-                    System.out.println("Falha ao listar dados. Status: " + res.status);
+                    System.err.println(status.getFormattedMessage());
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
             }
         }
     }
+
     public void handleEditarProprioUsuario() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -206,15 +207,12 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                String status = res.getStatus();
+                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                switch (status) {
-                    case "200" -> System.out.println("✓ Senha atualizada com sucesso!");
-                    case "400" -> System.out.println("✗ Erro: Requisição inválida (400).");
-                    case "401" -> System.out.println("✗ Erro: Token inválido ou expirado (401).");
-                    case "422" -> System.out.println("✗ Erro: Senha fora do padrão (422).");
-                    case "500" -> System.out.println("✗ Erro interno do servidor (500).");
-                    default -> System.out.println("Status retornado: " + status);
+                if (status.isSuccess()) {
+                    System.out.println(status.getFormattedMessage());
+                } else {
+                    System.err.println(status.getFormattedMessage());
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -250,38 +248,33 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                String status = res.getStatus();
+                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
                 switch (status) {
-                    case "200" -> {
-                        System.out.println("✓ Conta excluída com sucesso!");
-                        System.out.println("Você foi desconectado. Retornando ao menu principal...");
-                        // Limpa o token e os dados da sessão
+                    case OK:
+                        System.out.println(status.getFormattedMessage());
+                        System.out.println("Você foi desconectado.");
                         currentToken = null;
                         currentFuncao = null;
                         currentUsuario = null;
                         currentIdUsuario = -1;
-                    }
-                    case "400" -> System.out.println("✗ Erro: Requisição inválida (400).");
-                    case "401" -> {
-                        System.out.println("✗ Erro: Token inválido ou expirado (401).");
+                        break;
+                    case UNAUTHORIZED:
+                    case NOT_FOUND:
+                        System.err.println(status.getFormattedMessage());
                         // Limpa o token local por segurança
                         currentToken = null;
                         currentFuncao = null;
                         currentUsuario = null;
                         currentIdUsuario = -1;
-                    }
-                    case "403" -> System.out.println("✗ Erro: Não é possível excluir o administrador (403).");
-                    case "404" -> {
-                        System.out.println("✗ Erro: Usuário não encontrado (404).");
-                        // Limpa o token local pois o usuário não existe mais
-                        currentToken = null;
-                        currentFuncao = null;
-                        currentUsuario = null;
-                        currentIdUsuario = -1;
-                    }
-                    case "500" -> System.out.println("✗ Erro interno do servidor (500).");
-                    default -> System.out.println("Status retornado: " + status);
+                        break;
+                    case FORBIDDEN:
+                        System.err.println(status.getFormattedMessage());
+                        // NÃO limpa token - admin não pode se excluir mas continua logado
+                        break;
+                    default:
+                        System.err.println(status.getFormattedMessage());
+                        // Outros erros não limpam token
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());

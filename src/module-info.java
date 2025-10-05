@@ -8,4 +8,5 @@ module testvoteflix {
     exports voteflix.dto.request;
     exports voteflix.dto.response;
     exports voteflix.repository;
+    exports voteflix.util;
 }
