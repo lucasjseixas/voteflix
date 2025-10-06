@@ -23,7 +23,6 @@ public class Usuario {
         return new Usuario(0, "admin", senha, "admin");
     }
 
-    // Construtor privado para o admin pré-cadastrado
     public Usuario(int id, String usuario, String senha, String funcao) {
         this.id = id;
         this.usuario = usuario;

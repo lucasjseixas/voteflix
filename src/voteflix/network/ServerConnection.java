@@ -121,6 +121,18 @@ public class ServerConnection extends Thread {
                             finalResponse = SERVICE.handleExcluirProprioUsuario(inputLine);
                             break;
 
+                        case "LISTAR_USUARIOS":
+                            finalResponse = SERVICE.handleListarUsuarios(inputLine);
+                            break;
+
+                        case "ADMIN_EDITAR_USUARIO":
+                            finalResponse = SERVICE.handleAdminEditarUsuario(inputLine);
+                            break;
+
+                        case "ADMIN_EXCLUIR_USUARIO":
+                            finalResponse = SERVICE.handleAdminExcluirUsuario(inputLine);
+                            break;
+
                         default:
                             finalResponse = SERVICE.createStatusResponse("400");
                             break;

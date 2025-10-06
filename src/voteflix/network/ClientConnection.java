@@ -44,12 +44,12 @@ public class ClientConnection {
 
         boolean running = true;
         while (running) {
-            // Usa o service para obter o estado
-            displayMenu(service.getCurrentToken());
+            displayMenu(service.getCurrentToken(), service.getCurrentFuncao());
             System.out.print("Digite a opcao: ");
             choice = stdIn.readLine();
 
-            if (service.getCurrentToken() == null) { // Usuário Deslogado
+            if (service.getCurrentToken() == null) {
+                // USUÁRIO DESLOGADO
                 switch (choice) {
                     case "1":
                         service.handleLogin();
@@ -63,36 +63,50 @@ public class ClientConnection {
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
                 }
-            } else { // Usuário Logado
+            } else if ("admin".equals(service.getCurrentFuncao())) {
+                // ADMIN LOGADO
                 switch (choice) {
                     case "1":
-                        service.handleLogout();
-                        if (service.getCurrentToken() == null) {
-                            // Só encerra se o token foi limpo (logout bem-sucedido)
-                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
-                            running = false;
-                        } else {
-                            System.out.println("\n>>> Falha no logout do usuario");
-                        }
+                        service.handleListarUsuarios();
                         break;
                     case "2":
-                        service.handleListarProprioUsuario();
+                        service.handleAdminEditarUsuario();
                         break;
                     case "3":
-                        service.handleEditarProprioUsuario();
+                        service.handleAdminExcluirUsuario();
                         break;
                     case "4":
-                        service.handleExcluirProprioUsuario();
+                        service.handleLogout();
                         if (service.getCurrentToken() == null) {
-                            // Só encerra se o token foi limpo (logout bem-sucedido)
                             System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
                             running = false;
-                        } else {
-                            System.out.println("\n>>> Falha na confirmacao da exclusao do usuario");
                         }
                         break;
-                    case "5":
-                        running = false;
+                    default:
+                        System.out.println("Opcao invalida. Tente novamente.");
+                }
+            } else {
+                // USUÁRIO COMUM LOGADO
+                switch (choice) {
+                    case "1":
+                        service.handleListarProprioUsuario();
+                        break;
+                    case "2":
+                        service.handleEditarProprioUsuario();
+                        break;
+                    case "3":
+                        service.handleExcluirProprioUsuario();
+                        if (service.getCurrentToken() == null) {
+                            System.out.println("\n>>> Conta excluída. Encerrando...");
+                            running = false;
+                        }
+                        break;
+                    case "4":
+                        service.handleLogout();
+                        if (service.getCurrentToken() == null) {
+                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
+                            running = false;
+                        }
                         break;
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
@@ -106,19 +120,25 @@ public class ClientConnection {
         echoSocket.close();
     }
 
-    private static void displayMenu(String token) {
+    private static void displayMenu(String token, String funcao) {
         if (token == null) {
             System.out.println("\n--- MENU PRINCIPAL (DESLOGADO) ---");
             System.out.println("1. Login");
             System.out.println("2. Cadastrar Novo Usuario");
             System.out.println("3. Desconectar");
+        } else if ("admin".equals(funcao)) {
+            System.out.println("\n--- MENU ADMIN ---");
+            System.out.println("== Operações Administrativas ==");
+            System.out.println("1. Listar Todos os Usuários");
+            System.out.println("2. Editar Usuário (por ID)");
+            System.out.println("3. Excluir Usuário (por ID)");
+            System.out.println("4. Logout");
         } else {
-            System.out.println("\n--- MENU PRINCIPAL (LOGADO)  ---");
-            System.out.println("1. Logout");
-            System.out.println("2. Listar Dados Proprios Usuario");
-            System.out.println("3. Atualizar Senha");
-            System.out.println("4. Excluir Conta");
-            System.out.println("5. Desconectar");
+            System.out.println("\n--- MENU USUÁRIO (LOGADO)---");
+            System.out.println("1. Listar Meus Dados");
+            System.out.println("2. Atualizar Senha");
+            System.out.println("3. Excluir Conta");
+            System.out.println("4. Logout");
         }
     }
 }

@@ -18,7 +18,8 @@ public class Autenticacao {
             Algorithm algorithm = Algorithm.HMAC256(SECRET_KEY);
             return JWT.create()
                     .withIssuer("auth0")
-                    .withSubject(String.valueOf(id))
+                    //.withSubject(String.valueOf(id)) // checar se utilizaremos o withSubject ou um claim
+                    .withClaim("id", id)
                     .withClaim("usuario", usuario)
                     .withClaim("funcao", funcao)
                     .withIssuedAt(new Date())

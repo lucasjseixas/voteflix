@@ -1,5 +1,6 @@
 package voteflix.repository;
 
+import voteflix.dto.request.AdminExcluirUsuarioRequest;
 import voteflix.entity.Usuario;
 import voteflix.dto.UsuarioDTO;
 import com.google.gson.Gson;
@@ -51,8 +52,6 @@ public class UsuarioRepository {
 //    }
 
     public UsuarioRepository() {
-        System.out.println("=== INICIANDO UsuarioRepository ===");
-
         try {
             Path dataDir = Paths.get("src/data");
             System.out.println("-> Caminho do diretório: " + dataDir.toAbsolutePath());
@@ -65,10 +64,8 @@ public class UsuarioRepository {
             }
         } catch (IOException e) {
             System.err.println("-> ERRO ao criar diretório: " + e.getMessage());
-            e.printStackTrace();
         }
 
-        System.out.println("-> Tentando carregar usuários...");
         if (carregarUsuarios()) {
             System.out.println("-> Usuários carregados do JSON.");
         } else {
@@ -79,8 +76,6 @@ public class UsuarioRepository {
             salvarUsuarios();
             System.out.println("-> salvarUsuarios() concluído.");
         }
-
-        System.out.println("=== UsuarioRepository PRONTO ===\n");
     }
 
     /**
@@ -223,4 +218,66 @@ public class UsuarioRepository {
 
         return false;
     }
+
+    /**
+     * Retorna todos os usuários (sem senha).
+     */
+    public List<UsuarioDTO> getAllUsuarios() {
+        List<UsuarioDTO> lista = new ArrayList<>();
+        for (Usuario usuario : usuarios.values()) {
+            // Sem senha por segurança
+            lista.add(new UsuarioDTO(usuario.getId(), usuario.getUsuario(), null));
+        }
+        return lista;
+    }
+
+    /**
+     * Busca usuário por ID.
+     */
+    public Usuario findById(int id) {
+        for (Usuario usuario : usuarios.values()) {
+            if (usuario.getId() == id) {
+                return usuario;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Atualiza senha de um usuário pelo ID.
+     */
+    public boolean updateSenhaById(int id, String novaSenha) {
+        Usuario usuario = findById(id);
+
+        if (usuario == null) {
+            return false;
+        }
+
+        Usuario usuarioAtualizado = new Usuario(
+                usuario.getId(),
+                usuario.getUsuario(),
+                novaSenha,
+                usuario.getFuncao()
+        );
+
+        usuarios.put(usuario.getUsuario(), usuarioAtualizado);
+        salvarUsuarios();
+        return true;
+    }
+
+    /**
+     * Remove usuário pelo ID.
+     */
+    public boolean deleteUsuarioById(int id) {
+        Usuario usuario = findById(id);
+
+        if (usuario == null) {
+            return false;
+        }
+
+        usuarios.remove(usuario.getUsuario());
+        salvarUsuarios();
+        return true;
+    }
+
 }
