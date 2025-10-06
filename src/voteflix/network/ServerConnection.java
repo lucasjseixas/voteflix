@@ -14,6 +14,33 @@ public class ServerConnection extends Thread {
     private static final Gson GSON = new Gson(); // Instancia de Gson
     private static final ServerService SERVICE = new ServerService();
 
+    /**
+     * Do LogCallBack até private void log
+     * Assim como remover toda e qualquer linha que contenha LOG
+     * Tambem fazer a remocao dos listeners do sessionManager
+     * Tambem observar o retorno ao System.out.println(mensagem);
+     * Remover as INTERFACES para retornar ao sistema antes da implementacao da GUI
+     */
+    // Interface funcional para callback de logging
+    public interface LogCallback {
+        void log(String message);
+    }
+
+    private static LogCallback logCallback = null;
+
+    // Método estático para registrar callback da GUI
+    public static void setLogCallback(LogCallback callback) {
+        logCallback = callback;
+    }
+
+    // Método auxiliar para logar tanto no console quanto na GUI
+    private void log(String message) {
+        System.out.println(message);
+        if (logCallback != null) {
+            logCallback.log(message);
+        }
+    }
+
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = null;
 
@@ -60,6 +87,10 @@ public class ServerConnection extends Thread {
     @Override
     public void run() {
         System.out.println("Nova thread de comunicacao iniciada.\n");
+        String clientIP = clientSocket.getInetAddress().getHostAddress();
+        int clientPort = clientSocket.getPort();
+
+        log("Nova thread de comunicacao iniciada para " + clientIP + ":" + clientPort);
 
         try {
             PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -68,6 +99,21 @@ public class ServerConnection extends Thread {
             String inputLine;
 
             while ((inputLine = in.readLine()) != null) {
+
+                // --- 1. RECEBIMENTO E LOG DO JSON RECEBIDO ---
+                log("");
+                log("╔" + "═".repeat(70) + "╗");
+                log("║ 📥 JSON RECEBIDO DE " + String.format("%-46s", clientIP + ":" + clientPort) + "║");
+                log("╠" + "═".repeat(70) + "╣");
+
+                // Quebra o JSON em linhas para melhor visualização
+                String[] jsonLines = inputLine.split("(?<=\\{)|(?=\\})|(?<=,)");
+                for (String line : jsonLines) {
+                    if (!line.trim().isEmpty()) {
+                        log("║ " + String.format("%-68s", line.trim()) + "║");
+                    }
+                }
+                log("╚" + "═".repeat(70) + "╝");
 
                 // --- 1. INICIALIZAÇÃO E RECEBIMENTO ---
                 System.out.println("Servidor recebeu JSON: " + inputLine);
