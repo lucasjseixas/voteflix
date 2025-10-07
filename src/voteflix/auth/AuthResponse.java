@@ -15,8 +15,10 @@ public class AuthResponse {
     public String token;
 
     // Claims essenciais (devem estar no JWT)
-    @SerializedName("id_usuario")
-    public int idUsuario; // Requisito: id do usuario
+    //@SerializedName("id_usuario")
+    //public int idUsuario; // Requisito: id do usuario
+    @SerializedName("id")
+    public String id;
 
     @SerializedName("usuario")
     public String usuario; // Requisito: nome do usuario
@@ -33,8 +35,12 @@ public class AuthResponse {
         return token;
     }
 
-    public int getIdUsuario() {
-        return idUsuario;
+    //public int getIdUsuario() {
+    //    return idUsuario;
+    //}
+
+    public String getId() {
+        return id;
     }
 
     public String getUsuario() {

@@ -1,8 +1,12 @@
 package voteflix.gui;
 
-import voteflix.service.ClientService;
+import voteflix.dto.UsuarioDTO;
+import voteflix.dto.request.*;
+import voteflix.dto.response.*;
+import voteflix.util.HttpStatus;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -14,7 +18,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ClientGUI extends JFrame {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new Gson();
 
     // Componentes de Conexão
     private JTextField ipField;
@@ -37,21 +41,19 @@ public class ClientGUI extends JFrame {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-    private BufferedReader stdIn;
-    private ClientService clientService;
     private boolean connected = false;
+
+    // Sessão JWT
+    private String currentToken = null;
+    private String currentUsuario = null;
+    private String currentFuncao = null;
+    private int currentIdUsuario = -1;
 
     public ClientGUI() {
         setTitle("VoteFlix - Cliente");
-        setSize(900, 700);
+        setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
-        try {
-            stdIn = new BufferedReader(new InputStreamReader(System.in));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
         initComponents();
     }
@@ -114,12 +116,12 @@ public class ClientGUI extends JFrame {
         panel.add(ipField);
 
         panel.add(new JLabel("Porta:"));
-        portField = new JTextField("5000", 8);
+        portField = new JTextField("20000", 8);
         panel.add(portField);
 
-        connectButton = new JButton("🔌 Conectar");
+        connectButton = new JButton("Conectar");
         connectButton.setBackground(new Color(34, 139, 34));
-        connectButton.setForeground(Color.WHITE);
+        connectButton.setForeground(Color.BLACK);
         connectButton.setFont(new Font("Arial", Font.BOLD, 11));
         connectButton.setFocusPainted(false);
         connectButton.addActionListener(e -> toggleConnection());
@@ -154,17 +156,17 @@ public class ClientGUI extends JFrame {
         // Botões
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
 
-        loginButton = new JButton("🔓 Login");
+        loginButton = new JButton("Login");
         loginButton.setEnabled(false);
         loginButton.setBackground(new Color(70, 130, 180));
-        loginButton.setForeground(Color.WHITE);
+        loginButton.setForeground(Color.BLACK);
         loginButton.addActionListener(e -> handleLogin());
         buttonPanel.add(loginButton);
 
-        registerButton = new JButton("📝 Registrar");
+        registerButton = new JButton("Registrar");
         registerButton.setEnabled(false);
         registerButton.setBackground(new Color(60, 179, 113));
-        registerButton.setForeground(Color.WHITE);
+        registerButton.setForeground(Color.BLACK);
         registerButton.addActionListener(e -> handleRegister());
         buttonPanel.add(registerButton);
 
@@ -184,7 +186,7 @@ public class ClientGUI extends JFrame {
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setFont(new Font("Consolas", Font.PLAIN, 10));
-        logArea.setBackground(new Color(30, 30, 30));
+        logArea.setBackground(Color.BLACK);
         logArea.setForeground(new Color(200, 200, 200));
         logArea.setLineWrap(true);
         logArea.setWrapStyleWord(true);
@@ -192,7 +194,7 @@ public class ClientGUI extends JFrame {
         JScrollPane scrollPane = new JScrollPane(logArea);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
-        JButton clearButton = new JButton("🗑 Limpar Logs");
+        JButton clearButton = new JButton("Limpar Logs");
         clearButton.addActionListener(e -> logArea.setText(""));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -242,8 +244,8 @@ public class ClientGUI extends JFrame {
         try {
             int port = Integer.parseInt(portStr);
 
-            if (port < 1024 || port > 65535) {
-                JOptionPane.showMessageDialog(this, "Porta inválida! Use valores entre 1024 e 65535.", "Erro", JOptionPane.ERROR_MESSAGE);
+            if (port < 20000 || port > 25000) {
+                JOptionPane.showMessageDialog(this, "Porta inválida! Use valores entre 20000 e 25000.", "Erro", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
@@ -255,28 +257,28 @@ public class ClientGUI extends JFrame {
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // Cria ClientService com um BufferedReader simulado para GUI
-            clientService = new ClientService(out, in, stdIn);
-
             connected = true;
             ipField.setEnabled(false);
             portField.setEnabled(false);
-            connectButton.setText("🔌 Desconectar");
+            connectButton.setText("Desconectar");
+            connectButton.setForeground(new Color(0,0,0));
             connectButton.setBackground(new Color(178, 34, 34));
             statusLabel.setText("● Status: Conectado");
             statusLabel.setForeground(new Color(34, 139, 34));
 
             loginButton.setEnabled(true);
+            loginButton.setForeground(new Color(0,0,0));
+            registerButton.setForeground(new Color(0,0,0));
             registerButton.setEnabled(true);
 
-            addLog("✓ CONECTADO COM SUCESSO!");
+            addLog("CONECTADO COM SUCESSO!");
             addLog("=".repeat(50));
 
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Porta inválida! Digite apenas números.", "Erro", JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Erro ao conectar: " + e.getMessage(), "Erro de Conexão", JOptionPane.ERROR_MESSAGE);
-            addLog("✗ FALHA NA CONEXÃO: " + e.getMessage());
+            addLog("FALHA NA CONEXÃO: " + e.getMessage());
         }
     }
 
@@ -289,7 +291,7 @@ public class ClientGUI extends JFrame {
             connected = false;
             ipField.setEnabled(true);
             portField.setEnabled(true);
-            connectButton.setText("🔌 Conectar");
+            connectButton.setText("Conectar");
             connectButton.setBackground(new Color(34, 139, 34));
             statusLabel.setText("● Status: Desconectado");
             statusLabel.setForeground(Color.RED);
@@ -298,7 +300,7 @@ public class ClientGUI extends JFrame {
             registerButton.setEnabled(false);
 
             clearOperationsPanel();
-            userInfoLabel.setText("");
+            clearSession();
 
             addLog("=".repeat(50));
             addLog("DESCONECTADO");
@@ -320,31 +322,49 @@ public class ClientGUI extends JFrame {
 
         new Thread(() -> {
             try {
+                // Cria requisição usando DTO
+                LoginRequest request = new LoginRequest(usuario, senha);
+                String jsonRequest = GSON.toJson(request);
+
                 addLog("\n┌" + "─".repeat(48) + "┐");
                 addLog("│ ENVIANDO: LOGIN");
-                String jsonRequest = String.format("{\"operacao\":\"LOGIN\",\"usuario\":\"%s\",\"senha\":\"%s\"}", usuario, senha);
-                addLog("│ JSON: " + jsonRequest);
+                addLog("│ " + jsonRequest);
                 addLog("└" + "─".repeat(48) + "┘");
 
                 out.println(jsonRequest);
-
                 String jsonResponse = in.readLine();
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
                 addLog("│ RECEBIDO: RESPOSTA LOGIN");
-                addLog("│ JSON: " + jsonResponse);
+                addLog("│ " + jsonResponse);
                 addLog("└" + "─".repeat(48) + "┘");
 
-                // Processar resposta (simplificado - idealmente usar ClientService)
-                if (jsonResponse.contains("\"status\":\"200\"")) {
+                // Desserializa resposta usando DTO
+                LoginResponse response = GSON.fromJson(jsonResponse, LoginResponse.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                if (status == HttpStatus.OK && response.token != null) {
+                    // Armazena token
+                    currentToken = response.token;
+
+                    // Decodifica JWT para extrair claims
+                    DecodedJWT decodedJWT = JWT.decode(currentToken);
+                    currentIdUsuario = decodedJWT.getClaim("id").asInt();
+                    currentUsuario = decodedJWT.getClaim("usuario").asString();
+                    currentFuncao = decodedJWT.getClaim("funcao").asString();
+
                     SwingUtilities.invokeLater(() -> {
-                        userInfoLabel.setText("👤 Usuário: " + usuario);
-                        loadUserOperations(usuario.equals("admin"));
-                        JOptionPane.showMessageDialog(this, "Login realizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                        userInfoLabel.setText("👤 " + currentUsuario + " (" + currentFuncao + ") | ID: " + currentIdUsuario);
+                        loadUserOperations();
+                        JOptionPane.showMessageDialog(this,
+                                "Login realizado com sucesso!\nBem-vindo, " + currentUsuario,
+                                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } else {
                     SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(this, "Falha no login! Credenciais inválidas.", "Erro", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage(),
+                                "Erro no Login", JOptionPane.ERROR_MESSAGE);
                     });
                 }
 
@@ -370,31 +390,39 @@ public class ClientGUI extends JFrame {
 
         new Thread(() -> {
             try {
+                // Cria requisição usando DTO
+                CadastrarUsuarioRequest request = new CadastrarUsuarioRequest(usuario, senha);
+                String jsonRequest = GSON.toJson(request);
+
                 addLog("\n┌" + "─".repeat(48) + "┐");
                 addLog("│ ENVIANDO: CRIAR_USUARIO");
-                String jsonRequest = String.format("{\"operacao\":\"CRIAR_USUARIO\",\"usuario\":\"%s\",\"senha\":\"%s\"}", usuario, senha);
-                addLog("│ JSON: " + jsonRequest);
+                addLog("│ " + jsonRequest);
                 addLog("└" + "─".repeat(48) + "┘");
 
                 out.println(jsonRequest);
-
                 String jsonResponse = in.readLine();
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
                 addLog("│ RECEBIDO: RESPOSTA CRIAR_USUARIO");
-                addLog("│ JSON: " + jsonResponse);
+                addLog("│ " + jsonResponse);
                 addLog("└" + "─".repeat(48) + "┘");
 
-                if (jsonResponse.contains("\"status\":\"201\"")) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(this, "Usuário cadastrado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                // Desserializa resposta
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (status == HttpStatus.CREATED) {
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage(),
+                                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                         passField.setText("");
-                    });
-                } else {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(this, "Falha no cadastro! Usuário pode já existir.", "Erro", JOptionPane.ERROR_MESSAGE);
-                    });
-                }
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage(),
+                                "Erro no Cadastro", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
 
             } catch (IOException e) {
                 addLog("ERRO ao cadastrar: " + e.getMessage());
@@ -402,20 +430,20 @@ public class ClientGUI extends JFrame {
         }).start();
     }
 
-    private void loadUserOperations(boolean isAdmin) {
+    private void loadUserOperations() {
         operationsPanel.removeAll();
 
-        if (isAdmin) {
-            addOperationButton("📋 Listar Todos os Usuários", this::handleListUsers);
-            addOperationButton("✏️ Editar Usuário (por ID)", this::handleEditUser);
-            addOperationButton("🗑️ Excluir Usuário (por ID)", this::handleDeleteUser);
+        if ("admin".equals(currentFuncao)) {
+            addOperationButton("Listar Todos os Usuários", this::handleListUsers);
+            addOperationButton("Editar Usuário (por ID)", this::handleEditUser);
+            addOperationButton("Excluir Usuário (por ID)", this::handleDeleteUser);
         } else {
-            addOperationButton("👤 Listar Meus Dados", this::handleListMyself);
-            addOperationButton("🔑 Atualizar Senha", this::handleUpdatePassword);
-            addOperationButton("❌ Excluir Conta", this::handleDeleteAccount);
+            addOperationButton("Listar Meus Dados", this::handleListMyself);
+            addOperationButton("Atualizar Senha", this::handleUpdatePassword);
+            addOperationButton("Excluir Conta", this::handleDeleteAccount);
         }
 
-        addOperationButton("🚪 Logout", this::handleLogout);
+        addOperationButton("Logout", this::handleLogout);
 
         operationsPanel.revalidate();
         operationsPanel.repaint();
@@ -441,84 +469,359 @@ public class ClientGUI extends JFrame {
         operationsPanel.repaint();
     }
 
+    private void clearSession() {
+        currentToken = null;
+        currentUsuario = null;
+        currentFuncao = null;
+        currentIdUsuario = -1;
+        userInfoLabel.setText("");
+        userField.setText("");
+        passField.setText("");
+    }
+
+    // ========== OPERAÇÕES COM JWT ==========
+
     private void handleListUsers() {
-        // Implementação simplificada - usar token real em produção
-        addLog("\n[OPERAÇÃO] Listar Todos os Usuários");
-        JOptionPane.showMessageDialog(this, "Funcionalidade: Listar Usuários\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
+        if (currentToken == null) {
+            JOptionPane.showMessageDialog(this, "Você precisa estar logado!", "Erro", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                ListarUsuariosRequest request = new ListarUsuariosRequest(currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: LISTAR_USUARIOS");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA LISTAR_USUARIOS");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ListarUsuariosResponse response = GSON.fromJson(jsonResponse, ListarUsuariosResponse.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (status == HttpStatus.OK && response.usuarios != null) {
+                        StringBuilder sb = new StringBuilder("=== LISTA DE USUÁRIOS ===\n\n");
+                        for (UsuarioDTO user : response.usuarios) {
+                            sb.append("ID: ").append(user.id)
+                                    .append(" | Usuário: ").append(user.usuario)
+                                    .append("\n");
+                        }
+                        sb.append("\nTotal: ").append(response.usuarios.size()).append(" usuário(s)");
+
+                        JTextArea textArea = new JTextArea(sb.toString());
+                        textArea.setEditable(false);
+                        JScrollPane scrollPane = new JScrollPane(textArea);
+                        scrollPane.setPreferredSize(new Dimension(400, 300));
+
+                        JOptionPane.showMessageDialog(this, scrollPane, "Lista de Usuários", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void handleEditUser() {
+        if (currentToken == null) return;
+
         String id = JOptionPane.showInputDialog(this, "Digite o ID do usuário:");
-        if (id != null && !id.isEmpty()) {
-            String novaSenha = JOptionPane.showInputDialog(this, "Digite a nova senha:");
-            if (novaSenha != null && !novaSenha.isEmpty()) {
-                addLog("\n[OPERAÇÃO] Editar Usuário ID: " + id);
-                JOptionPane.showMessageDialog(this, "Funcionalidade: Editar Usuário\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
-            }
+        if (id == null || id.isEmpty()) return;
+
+        String novaSenha = JOptionPane.showInputDialog(this, "Digite a nova senha (3-20 caracteres):");
+        if (novaSenha == null || novaSenha.isEmpty()) return;
+
+        if (novaSenha.length() < 3 || novaSenha.length() > 20) {
+            JOptionPane.showMessageDialog(this, "Senha deve ter entre 3 e 20 caracteres!", "Erro", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        new Thread(() -> {
+            try {
+                AdminEditarUsuarioRequest request = new AdminEditarUsuarioRequest(novaSenha, currentToken, id);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: ADMIN_EDITAR_USUARIO");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA ADMIN_EDITAR_USUARIO");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                            status.isSuccess() ? "Sucesso" : "Erro",
+                            status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void handleDeleteUser() {
-        String id = JOptionPane.showInputDialog(this, "Digite o ID do usuário a excluir:");
-        if (id != null && !id.isEmpty()) {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "Tem certeza que deseja excluir o usuário ID " + id + "?",
-                    "Confirmar Exclusão",
-                    JOptionPane.YES_NO_OPTION);
+        if (currentToken == null) return;
 
-            if (confirm == JOptionPane.YES_OPTION) {
-                addLog("\n[OPERAÇÃO] Excluir Usuário ID: " + id);
-                JOptionPane.showMessageDialog(this, "Funcionalidade: Excluir Usuário\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
+        String id = JOptionPane.showInputDialog(this, "Digite o ID do usuário a excluir:");
+        if (id == null || id.isEmpty()) return;
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Tem certeza que deseja excluir o usuário ID " + id + "?",
+                "Confirmar Exclusão",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        new Thread(() -> {
+            try {
+                AdminExcluirUsuarioRequest request = new AdminExcluirUsuarioRequest(id, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: ADMIN_EXCLUIR_USUARIO");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA ADMIN_EXCLUIR_USUARIO");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                            status.isSuccess() ? "Sucesso" : "Erro",
+                            status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
             }
-        }
+        }).start();
     }
 
     private void handleListMyself() {
-        addLog("\n[OPERAÇÃO] Listar Meus Dados");
-        JOptionPane.showMessageDialog(this, "Funcionalidade: Listar Próprio Usuário\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
+        if (currentToken == null) return;
+
+        new Thread(() -> {
+            try {
+                ListarProprioUsuarioRequest request = new ListarProprioUsuarioRequest(currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: LISTAR_PROPRIO_USUARIO");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA LISTAR_PROPRIO_USUARIO");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ListarProprioUsuarioResponse response = GSON.fromJson(jsonResponse, ListarProprioUsuarioResponse.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (status == HttpStatus.OK) {
+                        String info = "=== MEUS DADOS ===\n\n" +
+                                "ID: " + currentIdUsuario + "\n" +
+                                "Usuário: " + response.usuario + "\n" +
+                                "Função: " + currentFuncao;
+                        JOptionPane.showMessageDialog(this, info, "Meus Dados", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void handleUpdatePassword() {
+        if (currentToken == null) return;
+
         String novaSenha = JOptionPane.showInputDialog(this, "Digite a nova senha (3-20 caracteres):");
-        if (novaSenha != null && !novaSenha.isEmpty()) {
-            if (novaSenha.length() >= 3 && novaSenha.length() <= 20) {
-                addLog("\n[OPERAÇÃO] Atualizar Senha");
-                JOptionPane.showMessageDialog(this, "Funcionalidade: Atualizar Senha\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Senha deve ter entre 3 e 20 caracteres!", "Erro", JOptionPane.ERROR_MESSAGE);
-            }
+        if (novaSenha == null || novaSenha.isEmpty()) return;
+
+        if (novaSenha.length() < 3 || novaSenha.length() > 20) {
+            JOptionPane.showMessageDialog(this, "Senha deve ter entre 3 e 20 caracteres!", "Erro", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        new Thread(() -> {
+            try {
+                EditarProprioUsuarioRequest request = new EditarProprioUsuarioRequest(novaSenha, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: EDITAR_PROPRIO_USUARIO");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA EDITAR_PROPRIO_USUARIO");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                            status.isSuccess() ? "Sucesso" : "Erro",
+                            status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void handleDeleteAccount() {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTem certeza que deseja excluir sua conta?",
-                "Confirmar Exclusão de Conta",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
+        if (currentToken == null) return;
 
-        if (confirm == JOptionPane.YES_OPTION) {
-            addLog("\n[OPERAÇÃO] Excluir Própria Conta");
-            JOptionPane.showMessageDialog(this, "Funcionalidade: Excluir Conta\nImplementar com token JWT", "Info", JOptionPane.INFORMATION_MESSAGE);
-            // Após exclusão bem-sucedida, desconectar
-            disconnect();
-        }
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTem certeza que deseja excluir sua conta?",
+                "Confirmar Exclusão de Conta",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        new Thread(() -> {
+            try {
+                ExcluirProprioUsuarioRequest request = new ExcluirProprioUsuarioRequest(currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: EXCLUIR_PROPRIO_USUARIO");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA EXCLUIR_PROPRIO_USUARIO");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (status == HttpStatus.OK) {
+                        JOptionPane.showMessageDialog(this,
+                                "Conta excluída com sucesso!\nVocê será desconectado.",
+                                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                        disconnect();
+                    } else {
+                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+
+                        // Se for erro de autenticação, limpa a sessão local
+                        if (status == HttpStatus.UNAUTHORIZED || status == HttpStatus.NOT_FOUND) {
+                            clearSession();
+                            clearOperationsPanel();
+                        }
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void handleLogout() {
+        if (currentToken == null) return;
+
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Deseja fazer logout?",
                 "Confirmar Logout",
                 JOptionPane.YES_NO_OPTION);
 
-        if (confirm == JOptionPane.YES_OPTION) {
-            addLog("\n[OPERAÇÃO] Logout");
-            clearOperationsPanel();
-            userInfoLabel.setText("");
-            userField.setText("");
-            passField.setText("");
-            JOptionPane.showMessageDialog(this, "Logout realizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-        }
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        new Thread(() -> {
+            try {
+                LogoutRequest request = new LogoutRequest(currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: LOGOUT");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA LOGOUT");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    clearSession();
+                    clearOperationsPanel();
+
+                    if (status == HttpStatus.OK) {
+                        JOptionPane.showMessageDialog(this,
+                                "Logout realizado com sucesso!",
+                                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage() + "\nSessão local limpa por segurança.",
+                                "Aviso", JOptionPane.WARNING_MESSAGE);
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+                SwingUtilities.invokeLater(() -> {
+                    clearSession();
+                    clearOperationsPanel();
+                });
+            }
+        }).start();
     }
 
     private void addLog(String message) {

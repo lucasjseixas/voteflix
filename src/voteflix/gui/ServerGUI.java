@@ -48,13 +48,13 @@ public class ServerGUI extends JFrame {
         ));
 
         configPanel.add(new JLabel("Porta:"));
-        portField = new JTextField("5000", 8);
+        portField = new JTextField("20000", 8);
         portField.setFont(new Font("Monospaced", Font.PLAIN, 14));
         configPanel.add(portField);
 
-        startButton = new JButton("▶ Iniciar Servidor");
+        startButton = new JButton("Iniciar Servidor");
         startButton.setBackground(new Color(34, 139, 34));
-        startButton.setForeground(Color.WHITE);
+        startButton.setForeground(Color.BLACK);
         startButton.setFont(new Font("Arial", Font.BOLD, 12));
         startButton.setFocusPainted(false);
         startButton.addActionListener(e -> toggleServer());
@@ -102,7 +102,7 @@ public class ServerGUI extends JFrame {
         logScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
         // Botão para limpar logs
-        JButton clearLogsButton = new JButton("🗑 Limpar Logs");
+        JButton clearLogsButton = new JButton("Limpar Logs");
         clearLogsButton.addActionListener(e -> logArea.setText(""));
         JPanel logButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         logButtonPanel.add(clearLogsButton);
@@ -158,9 +158,9 @@ public class ServerGUI extends JFrame {
         try {
             int port = Integer.parseInt(portField.getText().trim());
 
-            if (port < 1024 || port > 65535) {
+            if (port < 20000 || port > 25000) {
                 JOptionPane.showMessageDialog(this,
-                        "Porta inválida! Use valores entre 1024 e 65535.",
+                        "Porta inválida! Use valores entre 20000 e 25000.",
                         "Erro", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -169,7 +169,7 @@ public class ServerGUI extends JFrame {
             running = true;
 
             portField.setEnabled(false);
-            startButton.setText("■ Parar Servidor");
+            startButton.setText("Parar Servidor");
             startButton.setBackground(new Color(178, 34, 34));
             statusLabel.setText("● Status: Rodando na porta " + port);
             statusLabel.setForeground(new Color(34, 139, 34));
@@ -206,7 +206,7 @@ public class ServerGUI extends JFrame {
             }
 
             portField.setEnabled(true);
-            startButton.setText("▶ Iniciar Servidor");
+            startButton.setText("Iniciar Servidor");
             startButton.setBackground(new Color(34, 139, 34));
             statusLabel.setText("● Status: Parado");
             statusLabel.setForeground(Color.RED);

@@ -39,7 +39,7 @@ public class Main {
 
         // Cria diálogo de escolha
         SwingUtilities.invokeLater(() -> {
-            String[] opcoes = {"🖥️ Servidor", "💻 Cliente", "❌ Cancelar"};
+            String[] opcoes = {"Servidor", "Cliente", "Cancelar"};
 
             int escolha = JOptionPane.showOptionDialog(
                     null,

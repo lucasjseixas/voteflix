@@ -31,7 +31,7 @@ public class JsonValidator {
         for (String key : jsonObject.keySet()) {
             // Regex: apenas letras minúsculas, números e underscore
             if (!key.matches("^[a-z0-9_]+$")) {
-                System.err.println("  ❌ Chave JSON inválida detectada: '" + key + "' (deve ser snake_case sem acentuação)");
+                System.err.println("Chave JSON inválida detectada: '" + key + "' (deve ser snake_case sem acentuação)");
                 return false;
             }
 
@@ -43,7 +43,7 @@ public class JsonValidator {
                 // Regex: apenas letras (maiúsculas/minúsculas), números, underscore e alguns caracteres especiais comuns
                 // Permite: a-z, A-Z, 0-9, underscore, ponto, hífen
                 if (!strValue.matches("^[a-zA-Z0-9_.\\-]*$")) {
-                    System.err.println("  ❌ Valor inválido no campo '" + key + "': '" + strValue + "' (contém acentuação ou caracteres especiais não permitidos)");
+                    System.err.println("Valor inválido no campo '" + key + "': '" + strValue + "' (contém acentuação ou caracteres especiais não permitidos)");
                     return false;
                 }
             }
@@ -72,7 +72,7 @@ public class JsonValidator {
 
         // Regex: apenas letras MAIÚSCULAS e underscore
         if (!operacao.matches("^[A-Z_]+$")) {
-            System.err.println("  ❌ Operação inválida: '" + operacao + "' (deve ser MAIÚSCULAS e underscore, sem acentuação)");
+            System.err.println("Operação inválida: '" + operacao + "' (deve ser MAIÚSCULAS e underscore, sem acentuação)");
             return false;
         }
 
@@ -101,11 +101,11 @@ public class JsonValidator {
             }
 
             // Se não tem campo "operacao", é inválido
-            System.err.println("  ❌ JSON sem campo 'operacao'");
+            System.err.println("JSON sem campo 'operacao'");
             return false;
 
         } catch (Exception e) {
-            System.err.println("  ❌ Erro ao validar JSON: " + e.getMessage());
+            System.err.println("Erro ao validar JSON: " + e.getMessage());
             return false;
         }
     }
