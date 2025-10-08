@@ -11,7 +11,7 @@ import java.util.Date;
 
 public class Autenticacao {
 
-    private static final String SECRET_KEY = "";
+    private static final String SECRET_KEY = "JWT_SECRET_KEY";
 
     public String generateToken(int id, String usuario, String funcao) {
         try {

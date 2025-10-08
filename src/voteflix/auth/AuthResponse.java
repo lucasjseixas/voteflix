@@ -14,11 +14,11 @@ public class AuthResponse {
     @SerializedName("token")
     public String token;
 
-    // Claims essenciais (devem estar no JWT)
-    //@SerializedName("id_usuario")
-    //public int idUsuario; // Requisito: id do usuario
-    @SerializedName("id")
-    public String id;
+//    // Claims essenciais (devem estar no JWT)
+//    @SerializedName("id_usuario")
+//    public int idUsuario; // Requisito: id do usuario
+//    @SerializedName("id")
+//    public String id;
 
     @SerializedName("usuario")
     public String usuario; // Requisito: nome do usuario
@@ -34,20 +34,17 @@ public class AuthResponse {
     public String getToken() {
         return token;
     }
-
-    //public int getIdUsuario() {
-    //    return idUsuario;
-    //}
-
-    public String getId() {
-        return id;
-    }
-
-    public String getUsuario() {
-        return usuario;
-    }
-
-    public String getFuncao() {
-        return funcao;
-    }
 }
+
+//    public int getIdUsuario() {
+//        return idUsuario;
+//    }
+//
+//    public String getUsuario() {
+//        return usuario;
+//    }
+//
+//    public String getFuncao() {
+//        return funcao;
+//    }
+//}

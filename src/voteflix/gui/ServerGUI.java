@@ -72,6 +72,7 @@ public class ServerGUI extends JFrame {
         connectedUsersLabel.setFont(new Font("Arial", Font.BOLD, 12));
         connectedUsersLabel.setForeground(new Color(70, 130, 180));
 
+
         statusPanel.add(connectedUsersLabel);
         statusPanel.add(statusLabel);
         topPanel.add(statusPanel, BorderLayout.EAST);
@@ -133,7 +134,7 @@ public class ServerGUI extends JFrame {
         sessionsTable.getTableHeader().setReorderingAllowed(false);
         sessionsTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
         sessionsTable.getTableHeader().setBackground(new Color(70, 130, 180));
-        sessionsTable.getTableHeader().setForeground(Color.WHITE);
+        sessionsTable.getTableHeader().setForeground(Color.BLACK);
 
         JScrollPane tableScrollPane = new JScrollPane(sessionsTable);
         sessionsPanel.add(tableScrollPane, BorderLayout.CENTER);

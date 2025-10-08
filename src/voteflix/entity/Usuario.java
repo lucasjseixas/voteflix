@@ -1,10 +1,9 @@
 package voteflix.entity;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// Não precisa de anotações Gson, pois não será serializada/desserializada diretamente
 public class Usuario {
 
-    private static final AtomicInteger nextId = new AtomicInteger(1); // Thread-safe auto-incremento
+    private static final AtomicInteger nextId = new AtomicInteger(1);
 
     public final int id;
     public final String usuario;
@@ -12,13 +11,13 @@ public class Usuario {
     public final String funcao;
 
     public Usuario(String usuario, String senha, String funcao) {
-        this.id = nextId.getAndIncrement(); // Operação atômica
+        this.id = nextId.getAndIncrement();
         this.usuario = usuario;
         this.senha = senha;
         this.funcao = funcao;
     }
 
-    // Método para o usuário administrador pré-cadastrado
+    // Metodo para o usuário administrador pré-cadastrado
     public static Usuario createAdmin(String senha) {
         return new Usuario(0, "admin", senha, "admin");
     }

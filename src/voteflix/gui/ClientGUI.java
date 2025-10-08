@@ -121,7 +121,7 @@ public class ClientGUI extends JFrame {
 
         connectButton = new JButton("Conectar");
         connectButton.setBackground(new Color(34, 139, 34));
-        connectButton.setForeground(Color.BLACK);
+        connectButton.setForeground(Color.WHITE);
         connectButton.setFont(new Font("Arial", Font.BOLD, 11));
         connectButton.setFocusPainted(false);
         connectButton.addActionListener(e -> toggleConnection());
@@ -159,14 +159,14 @@ public class ClientGUI extends JFrame {
         loginButton = new JButton("Login");
         loginButton.setEnabled(false);
         loginButton.setBackground(new Color(70, 130, 180));
-        loginButton.setForeground(Color.BLACK);
+        loginButton.setForeground(Color.WHITE);
         loginButton.addActionListener(e -> handleLogin());
         buttonPanel.add(loginButton);
 
         registerButton = new JButton("Registrar");
         registerButton.setEnabled(false);
         registerButton.setBackground(new Color(60, 179, 113));
-        registerButton.setForeground(Color.BLACK);
+        registerButton.setForeground(Color.WHITE);
         registerButton.addActionListener(e -> handleRegister());
         buttonPanel.add(registerButton);
 
@@ -186,7 +186,7 @@ public class ClientGUI extends JFrame {
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setFont(new Font("Consolas", Font.PLAIN, 10));
-        logArea.setBackground(Color.BLACK);
+        logArea.setBackground(new Color(30, 30, 30));
         logArea.setForeground(new Color(200, 200, 200));
         logArea.setLineWrap(true);
         logArea.setWrapStyleWord(true);
@@ -254,21 +254,25 @@ public class ClientGUI extends JFrame {
             addLog("Servidor: " + ip + ":" + port);
 
             socket = new Socket(ip, port);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            // FIX: Especifica UTF-8 explicitamente
+            out = new PrintWriter(
+                    new OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8),
+                    true
+            );
+            in = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8)
+            );
 
             connected = true;
             ipField.setEnabled(false);
             portField.setEnabled(false);
             connectButton.setText("Desconectar");
-            connectButton.setForeground(new Color(0,0,0));
             connectButton.setBackground(new Color(178, 34, 34));
             statusLabel.setText("● Status: Conectado");
             statusLabel.setForeground(new Color(34, 139, 34));
 
             loginButton.setEnabled(true);
-            loginButton.setForeground(new Color(0,0,0));
-            registerButton.setForeground(new Color(0,0,0));
             registerButton.setEnabled(true);
 
             addLog("CONECTADO COM SUCESSO!");
@@ -278,7 +282,7 @@ public class ClientGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Porta inválida! Digite apenas números.", "Erro", JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Erro ao conectar: " + e.getMessage(), "Erro de Conexão", JOptionPane.ERROR_MESSAGE);
-            addLog("FALHA NA CONEXÃO: " + e.getMessage());
+            addLog("✗ FALHA NA CONEXÃO: " + e.getMessage());
         }
     }
 
@@ -312,6 +316,14 @@ public class ClientGUI extends JFrame {
     }
 
     private void handleLogin() {
+        // BUG FIX: Impede login se já estiver logado
+        if (currentToken != null) {
+            JOptionPane.showMessageDialog(this,
+                    "Você já está logado como " + currentUsuario + "!\nFaça logout antes de logar com outra conta.",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         String usuario = userField.getText().trim();
         String senha = new String(passField.getPassword());
 
@@ -354,6 +366,14 @@ public class ClientGUI extends JFrame {
                     currentFuncao = decodedJWT.getClaim("funcao").asString();
 
                     SwingUtilities.invokeLater(() -> {
+                        // BUG FIX: Limpa campos após login bem-sucedido
+                        userField.setText("");
+                        passField.setText("");
+
+                        // Desabilita botões de login/registro
+                        loginButton.setEnabled(false);
+                        registerButton.setEnabled(false);
+
                         userInfoLabel.setText("👤 " + currentUsuario + " (" + currentFuncao + ") | ID: " + currentIdUsuario);
                         loadUserOperations();
                         JOptionPane.showMessageDialog(this,
@@ -455,7 +475,7 @@ public class ClientGUI extends JFrame {
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setFont(new Font("Arial", Font.PLAIN, 12));
         button.setBackground(new Color(70, 130, 180));
-        button.setForeground(Color.WHITE);
+        button.setForeground(Color.BLACK); // BUG FIX: Cor preta para melhor legibilidade
         button.setFocusPainted(false);
         button.addActionListener(e -> new Thread(action).start());
 
@@ -477,9 +497,13 @@ public class ClientGUI extends JFrame {
         userInfoLabel.setText("");
         userField.setText("");
         passField.setText("");
-    }
 
-    // ========== OPERAÇÕES COM JWT ==========
+        // BUG FIX: Reabilita botões de login/registro ao limpar sessão
+        if (connected) {
+            loginButton.setEnabled(true);
+            registerButton.setEnabled(true);
+        }
+    }
 
     private void handleListUsers() {
         if (currentToken == null) {
@@ -718,7 +742,7 @@ public class ClientGUI extends JFrame {
         if (currentToken == null) return;
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTem certeza que deseja excluir sua conta?",
+                "ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTem certeza que deseja excluir sua conta?\nVocê será desconectado após a exclusão.",
                 "Confirmar Exclusão de Conta",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
@@ -751,19 +775,23 @@ public class ClientGUI extends JFrame {
                                 "Conta excluída com sucesso!\nVocê será desconectado.",
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                         disconnect();
-                    } else {
+                    } else if (status == HttpStatus.FORBIDDEN) {
+                        // Admin não pode se excluir, mas continua logado
                         JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-
-                        // Se for erro de autenticação, limpa a sessão local
-                        if (status == HttpStatus.UNAUTHORIZED || status == HttpStatus.NOT_FOUND) {
-                            clearSession();
-                            clearOperationsPanel();
-                        }
+                    } else {
+                        // Outros erros: limpa sessão local e desconecta por segurança
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage() + "\nVocê será desconectado por segurança.",
+                                "Erro", JOptionPane.ERROR_MESSAGE);
+                        disconnect();
                     }
                 });
 
             } catch (IOException e) {
                 addLog("ERRO: " + e.getMessage());
+                SwingUtilities.invokeLater(() -> {
+                    disconnect();
+                });
             }
         }).start();
     }
@@ -772,7 +800,7 @@ public class ClientGUI extends JFrame {
         if (currentToken == null) return;
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Deseja fazer logout?",
+                "Deseja fazer logout e desconectar do servidor?",
                 "Confirmar Logout",
                 JOptionPane.YES_NO_OPTION);
 
@@ -789,6 +817,7 @@ public class ClientGUI extends JFrame {
                 addLog("└" + "─".repeat(48) + "┘");
 
                 out.println(jsonRequest);
+
                 String jsonResponse = in.readLine();
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
@@ -800,25 +829,23 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    clearSession();
-                    clearOperationsPanel();
-
                     if (status == HttpStatus.OK) {
                         JOptionPane.showMessageDialog(this,
-                                "Logout realizado com sucesso!",
+                                "Logout realizado com sucesso!\nVocê será desconectado.",
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage() + "\nSessão local limpa por segurança.",
+                                status.getFormattedMessage() + "\nVocê será desconectado por segurança.",
                                 "Aviso", JOptionPane.WARNING_MESSAGE);
                     }
+
+                    disconnect();
                 });
 
             } catch (IOException e) {
                 addLog("ERRO: " + e.getMessage());
                 SwingUtilities.invokeLater(() -> {
-                    clearSession();
-                    clearOperationsPanel();
+                    disconnect();
                 });
             }
         }).start();

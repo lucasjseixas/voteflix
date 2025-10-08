@@ -1,24 +1,3 @@
-//package testevoteflix;
-//
-//import testevoteflix.gui.ClientGUI;
-//import testevoteflix.gui.ServerGUI;
-//
-//import javax.swing.*;
-//
-//public class Main {
-//    public static void main(String[] args) {
-//
-////        SwingUtilities.invokeLater(() -> {
-////            SwingUtilities.invokeLater(() -> {
-////                ServerGUI servidorGUI = new ServerGUI();
-////                ClientGUI clienteGUI = new ClientGUI();
-////                servidorGUI.setVisible(true);
-////                clienteGUI.setVisible(true);
-////            });
-////        });
-//    }
-//}
-
 package voteflix;
 
 import voteflix.gui.ServerGUI;
@@ -30,21 +9,20 @@ import java.awt.*;
 public class Main {
 
     public static void main(String[] args) {
-        // Define Look and Feel do sistema
+
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Cria diálogo de escolha
         SwingUtilities.invokeLater(() -> {
             String[] opcoes = {"Servidor", "Cliente", "Cancelar"};
 
             int escolha = JOptionPane.showOptionDialog(
                     null,
                     "Escolha o que deseja executar:",
-                    "VoteFlix - Launcher",
+                    "VoteFlix",
                     JOptionPane.DEFAULT_OPTION,
                     JOptionPane.QUESTION_MESSAGE,
                     null,
@@ -53,13 +31,13 @@ public class Main {
             );
 
             switch (escolha) {
-                case 0: // Servidor
+                case 0:
                     new ServerGUI().setVisible(true);
                     break;
-                case 1: // Cliente
+                case 1:
                     new ClientGUI().setVisible(true);
                     break;
-                default: // Cancelar ou fechar
+                default:
                     System.exit(0);
             }
         });
