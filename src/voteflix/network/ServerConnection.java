@@ -167,6 +167,22 @@ public class ServerConnection extends Thread {
                             finalResponse = SERVICE.handleAdminExcluirUsuario(inputLine);
                             break;
 
+                        case "CRIAR_FILME":
+                            finalResponse = SERVICE.handleCriarFilme(inputLine);
+                            break;
+
+                        case "LISTAR_FILMES":
+                            finalResponse = SERVICE.handleListarFilmes(inputLine);
+                            break;
+
+                        case "EDITAR_FILME":
+                            finalResponse = SERVICE.handleEditarFilme(inputLine);
+                            break;
+
+                        case "EXCLUIR_FILME":
+                            finalResponse = SERVICE.handleExcluirFilme(inputLine);
+                            break;
+
                         default:
                             finalResponse = SERVICE.createStatusResponse("400");
                             break;

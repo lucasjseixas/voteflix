@@ -2,15 +2,15 @@ package voteflix.service;
 
 import com.google.gson.Gson;
 import voteflix.auth.Autenticacao;
+import voteflix.dto.FilmeDTO;
 import voteflix.dto.UsuarioDTO;
 import voteflix.dto.request.*;
-import voteflix.dto.response.ListarProprioUsuarioResponse;
-import voteflix.dto.response.ListarUsuariosResponse;
-import voteflix.dto.response.LoginResponse;
-import voteflix.dto.response.ResponsePadrao;
+import voteflix.dto.response.*;
 import voteflix.entity.*;
+import voteflix.repository.FilmeRepository;
 import voteflix.repository.UsuarioRepository;
 import voteflix.session.SessionManager;
+import voteflix.util.GeneroFilme;
 
 import java.util.List;
 
@@ -18,7 +18,9 @@ public class ServerService {
 
     private final Gson GSON = new Gson();
     private final UsuarioRepository usuarioRepository = new UsuarioRepository();
+    private final FilmeRepository filmeRepository = new FilmeRepository();
     private final Autenticacao AUTH = new Autenticacao();
+
 
     /**
      * Gera uma resposta JSON simples de status.
@@ -449,6 +451,273 @@ public class ServerService {
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar ADMIN_EXCLUIR_USUARIO: " + e.getMessage());
+            return createStatusResponse("500");
+        }
+    }
+
+    public String handleCriarFilme(String jsonRequest) {
+        try {
+            CriarFilmeRequest req = GSON.fromJson(jsonRequest, CriarFilmeRequest.class);
+
+            // Validações básicas
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("  -> CRIAR_FILME falhou: Token ausente (400).");
+                return createStatusResponse("400");
+            }
+
+            if (req.filme == null) {
+                System.out.println("  -> CRIAR_FILME falhou: Dados do filme ausentes (400).");
+                return createStatusResponse("400");
+            }
+
+            // Valida token
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("  -> CRIAR_FILME falhou: Token inválido ou expirado (401).");
+                return createStatusResponse("401");
+            }
+
+            // Verifica se é admin
+            String funcao = decodedJWT.getClaim("funcao").asString();
+            if (!"admin".equals(funcao)) {
+                System.out.println("  -> CRIAR_FILME falhou: Usuário não é admin (403).");
+                return createStatusResponse("403");
+            }
+
+            // Validações de campos obrigatórios
+            if (req.filme.titulo == null || req.filme.titulo.trim().isEmpty() ||
+                    req.filme.diretor == null || req.filme.diretor.trim().isEmpty() ||
+                    req.filme.ano == null || req.filme.ano.trim().isEmpty() ||
+                    req.filme.genero == null || req.filme.genero.isEmpty() ||
+                    req.filme.sinopse == null || req.filme.sinopse.trim().isEmpty()) {
+
+                System.out.println("  -> CRIAR_FILME falhou: Campos obrigatórios ausentes (400).");
+                return createStatusResponse("400");
+            }
+
+            // Validações de tamanho
+            if (req.filme.titulo.length() > 30) {
+                System.out.println("  -> CRIAR_FILME falhou: Título excede 30 caracteres (422).");
+                return createStatusResponse("422");
+            }
+
+            if (req.filme.ano.length() != 4) {
+                System.out.println("  -> CRIAR_FILME falhou: Ano deve ter 4 dígitos (422).");
+                return createStatusResponse("422");
+            }
+
+            if (req.filme.sinopse.length() > 250) {
+                System.out.println("  -> CRIAR_FILME falhou: Sinopse excede 250 caracteres (422).");
+                return createStatusResponse("422");
+            }
+
+            // Valida ano (deve ser número)
+            try {
+                int ano = Integer.parseInt(req.filme.ano);
+                if (ano < 1800 || ano > 2100) {
+                    System.out.println("  -> CRIAR_FILME falhou: Ano inválido (422).");
+                    return createStatusResponse("422");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("  -> CRIAR_FILME falhou: Ano deve ser numérico (422).");
+                return createStatusResponse("422");
+            }
+
+            // Valida gêneros
+            if (!GeneroFilme.validateGeneros(req.filme.genero)) {
+                System.out.println("  -> CRIAR_FILME falhou: Gênero(s) inválido(s) (422).");
+                return createStatusResponse("422");
+            }
+
+            // Tenta adicionar filme
+            Filme novoFilme = filmeRepository.addFilme(
+                    req.filme.titulo,
+                    req.filme.diretor,
+                    req.filme.ano,
+                    req.filme.genero,
+                    req.filme.sinopse
+            );
+
+            if (novoFilme == null) {
+                System.out.println("  -> CRIAR_FILME falhou: Filme já existe (409).");
+                return createStatusResponse("409");
+            }
+
+            System.out.println("  -> CRIAR_FILME BEM-SUCEDIDO: ID " + novoFilme.getId() +
+                    ", Título: " + novoFilme.getTitulo());
+            return createStatusResponse("201");
+
+        } catch (Exception e) {
+            System.err.println("  -> Erro interno ao processar CRIAR_FILME: " + e.getMessage());
+            return createStatusResponse("500");
+        }
+    }
+
+    public String handleListarFilmes(String jsonRequest) {
+        try {
+            // Não precisa de autenticação - qualquer um pode listar
+            List<FilmeDTO> filmes = filmeRepository.getAllFilmes();
+
+            System.out.println("  -> LISTAR_FILMES BEM-SUCEDIDO: " + filmes.size() + " filme(s) retornado(s).");
+            return GSON.toJson(new ListarFilmesResponse("200", filmes));
+
+        } catch (Exception e) {
+            System.err.println("  -> Erro interno ao processar LISTAR_FILMES: " + e.getMessage());
+            return createStatusResponse("500");
+        }
+    }
+
+    public String handleEditarFilme(String jsonRequest) {
+        try {
+            EditarFilmeRequest req = GSON.fromJson(jsonRequest, EditarFilmeRequest.class);
+
+            // Validações básicas
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("  -> EDITAR_FILME falhou: Token ausente (400).");
+                return createStatusResponse("400");
+            }
+
+            if (req.filme == null || req.filme.id == null || req.filme.id.isEmpty()) {
+                System.out.println("  -> EDITAR_FILME falhou: ID do filme ausente (400).");
+                return createStatusResponse("400");
+            }
+
+            // Valida token
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("  -> EDITAR_FILME falhou: Token inválido ou expirado (401).");
+                return createStatusResponse("401");
+            }
+
+            // Verifica se é admin
+            String funcao = decodedJWT.getClaim("funcao").asString();
+            if (!"admin".equals(funcao)) {
+                System.out.println("  -> EDITAR_FILME falhou: Usuário não é admin (403).");
+                return createStatusResponse("403");
+            }
+
+            // Converte ID
+            int idFilme;
+            try {
+                idFilme = Integer.parseInt(req.filme.id);
+            } catch (NumberFormatException e) {
+                System.out.println("  -> EDITAR_FILME falhou: ID inválido (400).");
+                return createStatusResponse("400");
+            }
+
+            // Validações de campos (mesmo que criar)
+            if (req.filme.titulo == null || req.filme.titulo.trim().isEmpty() ||
+                    req.filme.diretor == null || req.filme.diretor.trim().isEmpty() ||
+                    req.filme.ano == null || req.filme.ano.trim().isEmpty() ||
+                    req.filme.genero == null || req.filme.genero.isEmpty() ||
+                    req.filme.sinopse == null || req.filme.sinopse.trim().isEmpty()) {
+
+                System.out.println("  -> EDITAR_FILME falhou: Campos obrigatórios ausentes (400).");
+                return createStatusResponse("400");
+            }
+
+            // Validações de tamanho
+            if (req.filme.titulo.length() > 30 || req.filme.ano.length() != 4 ||
+                    req.filme.sinopse.length() > 250) {
+                System.out.println("  -> EDITAR_FILME falhou: Dados fora do padrão (422).");
+                return createStatusResponse("422");
+            }
+
+            // Valida ano
+            try {
+                int ano = Integer.parseInt(req.filme.ano);
+                if (ano < 1800 || ano > 2100) {
+                    System.out.println("  -> EDITAR_FILME falhou: Ano inválido (422).");
+                    return createStatusResponse("422");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("  -> EDITAR_FILME falhou: Ano deve ser numérico (422).");
+                return createStatusResponse("422");
+            }
+
+            // Valida gêneros
+            if (!GeneroFilme.validateGeneros(req.filme.genero)) {
+                System.out.println("  -> EDITAR_FILME falhou: Gênero(s) inválido(s) (422).");
+                return createStatusResponse("422");
+            }
+
+            // Atualiza filme
+            boolean sucesso = filmeRepository.updateFilme(
+                    idFilme,
+                    req.filme.titulo,
+                    req.filme.diretor,
+                    req.filme.ano,
+                    req.filme.genero,
+                    req.filme.sinopse
+            );
+
+            if (!sucesso) {
+                System.out.println("  -> EDITAR_FILME falhou: Filme não encontrado ou conflito (404/409).");
+                return createStatusResponse("404");
+            }
+
+            System.out.println("  -> EDITAR_FILME BEM-SUCEDIDO: ID " + idFilme);
+            return createStatusResponse("200");
+
+        } catch (Exception e) {
+            System.err.println("  -> Erro interno ao processar EDITAR_FILME: " + e.getMessage());
+            return createStatusResponse("500");
+        }
+    }
+
+    public String handleExcluirFilme(String jsonRequest) {
+        try {
+            ExcluirFilmeRequest req = GSON.fromJson(jsonRequest, ExcluirFilmeRequest.class);
+
+            // Validações básicas
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("  -> EXCLUIR_FILME falhou: Token ausente (400).");
+                return createStatusResponse("400");
+            }
+
+            if (req.id == null || req.id.isEmpty()) {
+                System.out.println("  -> EXCLUIR_FILME falhou: ID ausente (400).");
+                return createStatusResponse("400");
+            }
+
+            // Valida token
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("  -> EXCLUIR_FILME falhou: Token inválido ou expirado (401).");
+                return createStatusResponse("401");
+            }
+
+            // Verifica se é admin
+            String funcao = decodedJWT.getClaim("funcao").asString();
+            if (!"admin".equals(funcao)) {
+                System.out.println("  -> EXCLUIR_FILME falhou: Usuário não é admin (403).");
+                return createStatusResponse("403");
+            }
+
+            // Converte ID
+            int idFilme;
+            try {
+                idFilme = Integer.parseInt(req.id);
+            } catch (NumberFormatException e) {
+                System.out.println("  -> EXCLUIR_FILME falhou: ID inválido (400).");
+                return createStatusResponse("400");
+            }
+
+            // Remove filme
+            boolean sucesso = filmeRepository.deleteFilme(idFilme);
+
+            if (!sucesso) {
+                System.out.println("  -> EXCLUIR_FILME falhou: Filme não encontrado (404).");
+                return createStatusResponse("404");
+            }
+
+            // TODO: Quando implementar reviews, apagar reviews deste filme aqui
+
+            System.out.println("  -> EXCLUIR_FILME BEM-SUCEDIDO: ID " + idFilme);
+            return createStatusResponse("200");
+
+        } catch (Exception e) {
+            System.err.println("  -> Erro interno ao processar EXCLUIR_FILME: " + e.getMessage());
             return createStatusResponse("500");
         }
     }

@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName;
  */
 public class UsuarioDTO {
     @SerializedName("id")
-    public int id;
+    public String id;
 
     @SerializedName("usuario")
     public String usuario;
@@ -18,7 +18,7 @@ public class UsuarioDTO {
 
     public UsuarioDTO() {}
 
-    public UsuarioDTO(int id, String usuario, String senha) {
+    public UsuarioDTO(String id, String usuario, String senha) {
         this.id = id;
         this.usuario = usuario;
         this.senha = senha;

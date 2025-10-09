@@ -58,6 +58,9 @@ public class ClientConnection {
                         service.handleCadastrarUsuario();
                         break;
                     case "3":
+                        service.handleVerFilmes();
+                        break;
+                    case "4":
                         running = false;
                         break;
                     default:
@@ -76,6 +79,18 @@ public class ClientConnection {
                         service.handleAdminExcluirUsuario();
                         break;
                     case "4":
+                        service.handleVerFilmes();
+                        break;
+                    case "5":
+                        service.handleAdicionarFilme();
+                        break;
+                    case "6":
+                        service.handleEditarFilme();
+                        break;
+                    case "7":
+                        service.handleExcluirFilme();
+                        break;
+                    case "8":
                         service.handleLogout();
                         if (service.getCurrentToken() == null) {
                             System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
@@ -102,6 +117,9 @@ public class ClientConnection {
                         }
                         break;
                     case "4":
+                        service.handleVerFilmes();
+                        break;
+                    case "5":
                         service.handleLogout();
                         if (service.getCurrentToken() == null) {
                             System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
@@ -125,20 +143,29 @@ public class ClientConnection {
             System.out.println("\n--- MENU PRINCIPAL (DESLOGADO) ---");
             System.out.println("1. Login");
             System.out.println("2. Cadastrar Novo Usuario");
-            System.out.println("3. Desconectar");
+            System.out.println("3. Ver Catálogo de Filmes");
+            System.out.println("4. Desconectar");
         } else if ("admin".equals(funcao)) {
             System.out.println("\n--- MENU ADMIN ---");
             System.out.println("== Operações Administrativas ==");
             System.out.println("1. Listar Todos os Usuários");
             System.out.println("2. Editar Usuário (por ID)");
             System.out.println("3. Excluir Usuário (por ID)");
-            System.out.println("4. Logout");
+            System.out.println("");
+            System.out.println("== Gerenciar Filmes ==");
+            System.out.println("4. Ver Catálogo de Filmes");
+            System.out.println("5. Adicionar Filme");
+            System.out.println("6. Editar Filme");
+            System.out.println("7. Excluir Filme");
+            System.out.println("");
+            System.out.println("8. Logout");
         } else {
             System.out.println("\n--- MENU USUÁRIO (LOGADO)---");
             System.out.println("1. Listar Meus Dados");
             System.out.println("2. Atualizar Senha");
             System.out.println("3. Excluir Conta");
-            System.out.println("4. Logout");
+            System.out.println("4. Ver Catálogo de Filmes");
+            System.out.println("5. Logout");
         }
     }
 }

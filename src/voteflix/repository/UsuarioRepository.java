@@ -101,17 +101,19 @@ public class UsuarioRepository {
 
             int maxId = 0;
             for (UsuarioDTO dto : usuariosDTO) {
-                System.out.println("   -> Carregando usuario: ID " + dto.id + ", Usuario: " + dto.usuario);
+                int id = Integer.parseInt(dto.id);
+
+                System.out.println("   -> Carregando usuario: ID " + id + ", Usuario: " + dto.usuario);
 
                 // Determina a função baseado no ID
-                String funcao = (dto.id == 0) ? "admin" : "user";
+                String funcao = (id == 0) ? "admin" : "user";
 
                 // Recria o usuário completo
-                Usuario usuario = new Usuario(dto.id, dto.usuario, dto.senha, funcao);
+                Usuario usuario = new Usuario(id, dto.usuario, dto.senha, funcao);
                 usuarios.put(usuario.getUsuario(), usuario);
 
-                if (dto.id > maxId) {
-                    maxId = dto.id;
+                if (id > maxId) {
+                    maxId = id;
                 }
             }
 
@@ -124,8 +126,12 @@ public class UsuarioRepository {
         } catch (IOException e) {
             System.err.println("Erro ao carregar usuarios.json: " + e.getMessage());
             return false;
+        } catch (NumberFormatException e) {
+            System.err.println("Erro ao converter ID de string para int: " + e.getMessage());
+            return false;
         }
     }
+
 
     /**
      * Salva usuários no arquivo JSON (id, usuario e senha).
@@ -136,11 +142,12 @@ public class UsuarioRepository {
             List<UsuarioDTO> usuariosDTO = new ArrayList<>();
 
             for (Usuario usuario : usuarios.values()) {
-                usuariosDTO.add(new UsuarioDTO(
-                        usuario.getId(),
-                        usuario.getUsuario(),
-                        usuario.getSenha()
-                ));
+                UsuarioDTO dto = new UsuarioDTO();
+                dto.id = String.valueOf(usuario.getId());
+                dto.usuario = usuario.getUsuario();
+                dto.senha = usuario.getSenha();
+
+                usuariosDTO.add(dto);
             }
 
             // Serializa e salva
@@ -225,8 +232,12 @@ public class UsuarioRepository {
     public List<UsuarioDTO> getAllUsuarios() {
         List<UsuarioDTO> lista = new ArrayList<>();
         for (Usuario usuario : usuarios.values()) {
-            // Sem senha por segurança
-            lista.add(new UsuarioDTO(usuario.getId(), usuario.getUsuario(), null));
+            UsuarioDTO dto = new UsuarioDTO();
+            dto.id = String.valueOf(usuario.getId());
+            dto.usuario = usuario.getUsuario();
+            dto.senha = null;
+
+            lista.add(dto);
         }
         return lista;
     }

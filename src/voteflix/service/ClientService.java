@@ -13,6 +13,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import voteflix.dto.FilmeDTO;
+import voteflix.dto.request.CriarFilmeRequest;
+import voteflix.dto.request.EditarFilmeRequest;
+import voteflix.dto.request.ExcluirFilmeRequest;
+import voteflix.dto.response.ListarFilmesResponse;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class ClientService {
 
     private final Gson GSON = new Gson();
@@ -419,6 +428,290 @@ public class ClientService {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
                 HttpStatus status = HttpStatus.fromCode(res.getStatus());
+
+                if (status.isSuccess()) {
+                    System.out.println(status.getFormattedMessage());
+                } else {
+                    System.err.println(status.getFormattedMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    public void handleVerFilmes() throws IOException {
+        System.out.println("\n--- CATÁLOGO DE FILMES ---");
+
+        String jsonRequest = "{\"operacao\":\"LISTAR_FILMES\"}";
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ListarFilmesResponse res = GSON.fromJson(jsonResponse, ListarFilmesResponse.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
+
+                if (status == HttpStatus.OK && res.filmes != null) {
+                    if (res.filmes.isEmpty()) {
+                        System.out.println("\n>>> Nenhum filme cadastrado ainda.");
+                    } else {
+                        System.out.println("\n╔═══════════════════════════════════════════════════════════════╗");
+                        System.out.println("║                    CATÁLOGO DE FILMES                         ║");
+                        System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+
+                        for (FilmeDTO filme : res.filmes) {
+                            System.out.println("║");
+                            System.out.println("║ 🎬 " + filme.titulo);
+                            System.out.println("║    ID: " + filme.id + " | Diretor: " + filme.diretor + " | Ano: " + filme.ano);
+                            System.out.println("║    Gêneros: " + String.join(", ", filme.genero));
+                            System.out.println("║    ⭐ Nota: " + filme.nota + " (" + filme.qtdAvaliacoes + " avaliações)");
+                            System.out.println("║    Sinopse: " + filme.sinopse);
+                            System.out.println("║");
+                            System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+                        }
+
+                        System.out.println("║ Total: " + res.filmes.size() + " filme(s)");
+                        System.out.println("╚═══════════════════════════════════════════════════════════════╝");
+                    }
+                } else {
+                    System.err.println(status.getFormattedMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    public void handleAdicionarFilme() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado como admin para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- ADICIONAR NOVO FILME ---");
+
+        System.out.print("Título (max 30 caracteres): ");
+        String titulo = stdIn.readLine().trim();
+
+        System.out.print("Diretor: ");
+        String diretor = stdIn.readLine().trim();
+
+        System.out.print("Ano (YYYY): ");
+        String ano = stdIn.readLine().trim();
+
+        System.out.println("\nGêneros disponíveis:");
+        System.out.println("1. Ação          2. Aventura       3. Comédia");
+        System.out.println("4. Drama         5. Fantasia       6. Ficção Científica");
+        System.out.println("7. Terror        8. Romance        9. Documentário");
+        System.out.println("10. Musical      11. Animação");
+
+        String[] generosDisponiveis = {
+                "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
+                "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
+        };
+
+        System.out.print("Digite os números dos gêneros separados por vírgula (ex: 1,3,6): ");
+        String generosInput = stdIn.readLine().trim();
+
+        List<String> generos = new ArrayList<>();
+        try {
+            String[] indices = generosInput.split(",");
+            for (String idx : indices) {
+                int index = Integer.parseInt(idx.trim()) - 1;
+                if (index >= 0 && index < generosDisponiveis.length) {
+                    generos.add(generosDisponiveis[index]);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao processar gêneros. Operação cancelada.");
+            return;
+        }
+
+        if (generos.isEmpty()) {
+            System.err.println("Nenhum gênero válido selecionado. Operação cancelada.");
+            return;
+        }
+
+        System.out.print("Sinopse (max 250 caracteres): ");
+        String sinopse = stdIn.readLine().trim();
+
+        // Validações
+        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || sinopse.isEmpty()) {
+            System.err.println("Erro: Todos os campos são obrigatórios.");
+            return;
+        }
+
+        if (titulo.length() > 30) {
+            System.err.println("Erro: Título não pode exceder 30 caracteres.");
+            return;
+        }
+
+        if (ano.length() != 4) {
+            System.err.println("Erro: Ano deve ter exatamente 4 dígitos.");
+            return;
+        }
+
+        if (sinopse.length() > 250) {
+            System.err.println("Erro: Sinopse não pode exceder 250 caracteres.");
+            return;
+        }
+
+        CriarFilmeRequest.FilmeData filmeData = new CriarFilmeRequest.FilmeData(
+                titulo, diretor, ano, generos, sinopse
+        );
+        CriarFilmeRequest req = new CriarFilmeRequest(filmeData, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
+
+                if (status.isSuccess()) {
+                    System.out.println(status.getFormattedMessage());
+                } else {
+                    System.err.println(status.getFormattedMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    public void handleEditarFilme() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado como admin para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- EDITAR FILME ---");
+
+        System.out.print("ID do filme a editar: ");
+        String id = stdIn.readLine().trim();
+
+        System.out.println("\n>>> Digite os novos dados (mantenha os dados atuais se não quiser alterar)");
+
+        System.out.print("Novo Título (max 30): ");
+        String titulo = stdIn.readLine().trim();
+
+        System.out.print("Novo Diretor: ");
+        String diretor = stdIn.readLine().trim();
+
+        System.out.print("Novo Ano (YYYY): ");
+        String ano = stdIn.readLine().trim();
+
+        System.out.println("\nGêneros disponíveis:");
+        System.out.println("1. Ação          2. Aventura       3. Comédia");
+        System.out.println("4. Drama         5. Fantasia       6. Ficção Científica");
+        System.out.println("7. Terror        8. Romance        9. Documentário");
+        System.out.println("10. Musical      11. Animação");
+
+        String[] generosDisponiveis = {
+                "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
+                "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
+        };
+
+        System.out.print("Digite os números dos gêneros separados por vírgula: ");
+        String generosInput = stdIn.readLine().trim();
+
+        List<String> generos = new ArrayList<>();
+        try {
+            String[] indices = generosInput.split(",");
+            for (String idx : indices) {
+                int index = Integer.parseInt(idx.trim()) - 1;
+                if (index >= 0 && index < generosDisponiveis.length) {
+                    generos.add(generosDisponiveis[index]);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao processar gêneros. Operação cancelada.");
+            return;
+        }
+
+        System.out.print("Nova Sinopse (max 250): ");
+        String sinopse = stdIn.readLine().trim();
+
+        // Validações
+        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || generos.isEmpty() || sinopse.isEmpty()) {
+            System.err.println("Erro: Todos os campos são obrigatórios.");
+            return;
+        }
+
+        if (titulo.length() > 30 || ano.length() != 4 || sinopse.length() > 250) {
+            System.err.println("Erro: Verifique os limites de caracteres.");
+            return;
+        }
+
+        EditarFilmeRequest.FilmeUpdate filmeUpdate = new EditarFilmeRequest.FilmeUpdate(
+                id, titulo, diretor, ano, generos, sinopse
+        );
+        EditarFilmeRequest req = new EditarFilmeRequest(filmeUpdate, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
+
+                if (status.isSuccess()) {
+                    System.out.println(status.getFormattedMessage());
+                } else {
+                    System.err.println(status.getFormattedMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    public void handleExcluirFilme() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado como admin para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- EXCLUIR FILME ---");
+        System.out.print("ID do filme a excluir: ");
+        String id = stdIn.readLine().trim();
+
+        System.out.print("⚠️  ATENÇÃO: Esta ação excluirá o filme e todas as suas avaliações!\nTem certeza? (S/N): ");
+        String confirmacao = stdIn.readLine().trim();
+
+        if (!confirmacao.equalsIgnoreCase("S")) {
+            System.out.println("Operação cancelada.");
+            return;
+        }
+
+        ExcluirFilmeRequest req = new ExcluirFilmeRequest(id, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
 
                 if (status.isSuccess()) {
                     System.out.println(status.getFormattedMessage());
