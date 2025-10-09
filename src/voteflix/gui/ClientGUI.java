@@ -8,6 +8,15 @@ import com.google.gson.Gson;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
+import voteflix.dto.FilmeDTO;
+import voteflix.dto.request.CriarFilmeRequest;
+import voteflix.dto.request.EditarFilmeRequest;
+import voteflix.dto.request.ExcluirFilmeRequest;
+import voteflix.dto.request.ListarFilmesRequest;
+import voteflix.dto.response.ListarFilmesResponse;
+import java.util.Arrays;
+import java.util.ArrayList;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -222,6 +231,74 @@ public class ClientGUI extends JFrame {
         panel.add(userInfoLabel, BorderLayout.EAST);
 
         return panel;
+    }
+
+    private JPanel criarCardFilme(FilmeDTO filme) {
+        JPanel card = new JPanel();
+        card.setLayout(new BorderLayout(10, 5));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(70, 130, 180), 2),
+                new EmptyBorder(10, 10, 10, 10)
+        ));
+        card.setBackground(Color.WHITE);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+
+        // Painel esquerdo - Info principal
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBackground(Color.WHITE);
+
+        JLabel tituloLabel = new JLabel("🎬 " + filme.titulo);
+        tituloLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        tituloLabel.setForeground(new Color(70, 130, 180));
+
+        JLabel detalhesLabel = new JLabel("Diretor: " + filme.diretor + " | Ano: " + filme.ano);
+        detalhesLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+
+        JLabel generosLabel = new JLabel("Gêneros: " + String.join(", ", filme.genero));
+        generosLabel.setFont(new Font("Arial", Font.ITALIC, 11));
+        generosLabel.setForeground(Color.GRAY);
+
+        JLabel sinopseLabel = new JLabel("<html><p style='width:500px'>" + filme.sinopse + "</p></html>");
+        sinopseLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+
+        infoPanel.add(tituloLabel);
+        infoPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        infoPanel.add(detalhesLabel);
+        infoPanel.add(generosLabel);
+        infoPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        infoPanel.add(sinopseLabel);
+
+        // Painel direito - Nota
+        JPanel notaPanel = new JPanel();
+        notaPanel.setLayout(new BoxLayout(notaPanel, BoxLayout.Y_AXIS));
+        notaPanel.setBackground(Color.WHITE);
+        notaPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        JLabel notaLabel = new JLabel("⭐ " + filme.nota);
+        notaLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        notaLabel.setForeground(new Color(255, 165, 0));
+        notaLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel avalLabel = new JLabel("(" + filme.qtdAvaliacoes + " avaliações)");
+        avalLabel.setFont(new Font("Arial", Font.PLAIN, 10));
+        avalLabel.setForeground(Color.GRAY);
+        avalLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel idLabel = new JLabel("ID: " + filme.id);
+        idLabel.setFont(new Font("Monospaced", Font.PLAIN, 9));
+        idLabel.setForeground(Color.LIGHT_GRAY);
+        idLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        notaPanel.add(notaLabel);
+        notaPanel.add(avalLabel);
+        notaPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        notaPanel.add(idLabel);
+
+        card.add(infoPanel, BorderLayout.CENTER);
+        card.add(notaPanel, BorderLayout.EAST);
+
+        return card;
     }
 
     private void toggleConnection() {
@@ -453,10 +530,16 @@ public class ClientGUI extends JFrame {
     private void loadUserOperations() {
         operationsPanel.removeAll();
 
+        addOperationButton("🎬 Ver Catálogo de Filmes", this::handleVerFilmes);
+
         if ("admin".equals(currentFuncao)) {
             addOperationButton("Listar Todos os Usuários", this::handleListUsers);
             addOperationButton("Editar Usuário (por ID)", this::handleEditUser);
             addOperationButton("Excluir Usuário (por ID)", this::handleDeleteUser);
+            addSeparator("GERENCIAR FILMES");
+            addOperationButton("Adicionar Filme", this::handleAdicionarFilme);
+            addOperationButton("Editar Filme", this::handleEditarFilme);
+            addOperationButton("Excluir Filme", this::handleExcluirFilme);
         } else {
             addOperationButton("Listar Meus Dados", this::handleListMyself);
             addOperationButton("Atualizar Senha", this::handleUpdatePassword);
@@ -467,6 +550,17 @@ public class ClientGUI extends JFrame {
 
         operationsPanel.revalidate();
         operationsPanel.repaint();
+    }
+
+    private void addSeparator(String texto) {
+        JLabel separator = new JLabel("─── " + texto + " ───");
+        separator.setFont(new Font("Arial", Font.BOLD, 11));
+        separator.setForeground(new Color(100, 100, 100));
+        separator.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        operationsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        operationsPanel.add(separator);
+        operationsPanel.add(Box.createRigidArea(new Dimension(0, 5)));
     }
 
     private void addOperationButton(String text, Runnable action) {
@@ -858,6 +952,277 @@ public class ClientGUI extends JFrame {
             logArea.setCaretPosition(logArea.getDocument().getLength());
         });
     }
+
+    // Operações de filmes
+
+    private void handleVerFilmes() {
+        new Thread(() -> {
+            try {
+                // CORRIGIDO: Usa DTO ao invés de JSON manual
+                ListarFilmesRequest request = new ListarFilmesRequest();
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: LISTAR_FILMES");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│  RECEBIDO: RESPOSTA LISTAR_FILMES");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ListarFilmesResponse response = GSON.fromJson(jsonResponse, ListarFilmesResponse.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (status == HttpStatus.OK && response.filmes != null) {
+                        mostrarCatalogoFilmes(response.filmes);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                status.getFormattedMessage(),
+                                "Erro", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void handleAdicionarFilme() {
+        if (currentToken == null) return;
+
+        // Dialog customizado para entrada de dados
+        JDialog dialog = new JDialog(this, "➕ Adicionar Novo Filme", true);
+        dialog.setSize(500, 550);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
+        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        JTextField tituloField = new JTextField();
+        JTextField diretorField = new JTextField();
+        JTextField anoField = new JTextField();
+        JTextArea sinopseArea = new JTextArea(3, 20);
+        sinopseArea.setLineWrap(true);
+        sinopseArea.setWrapStyleWord(true);
+
+        // Gêneros com checkboxes
+        String[] generosDisponiveis = {
+                "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
+                "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
+        };
+
+        JPanel generoPanel = new JPanel(new GridLayout(0, 2));
+        java.util.List<JCheckBox> generoCheckboxes = new ArrayList<>();
+        for (String genero : generosDisponiveis) {
+            JCheckBox cb = new JCheckBox(genero);
+            generoCheckboxes.add(cb);
+            generoPanel.add(cb);
+        }
+
+        formPanel.add(new JLabel("Título (max 30):"));
+        formPanel.add(tituloField);
+        formPanel.add(new JLabel("Diretor:"));
+        formPanel.add(diretorField);
+        formPanel.add(new JLabel("Ano (YYYY):"));
+        formPanel.add(anoField);
+        formPanel.add(new JLabel("Sinopse (max 250):"));
+        formPanel.add(new JScrollPane(sinopseArea));
+        formPanel.add(new JLabel("Gêneros:"));
+        formPanel.add(new JScrollPane(generoPanel));
+
+        dialog.add(formPanel, BorderLayout.CENTER);
+
+        // Botões
+        JPanel buttonPanel = new JPanel();
+        JButton salvarButton = new JButton("💾 Salvar");
+        JButton cancelarButton = new JButton("❌ Cancelar");
+
+        salvarButton.addActionListener(e -> {
+            String titulo = tituloField.getText().trim();
+            String diretor = diretorField.getText().trim();
+            String ano = anoField.getText().trim();
+            String sinopse = sinopseArea.getText().trim();
+
+            java.util.List<String> generosSelecionados = new ArrayList<>();
+            for (JCheckBox cb : generoCheckboxes) {
+                if (cb.isSelected()) {
+                    generosSelecionados.add(cb.getText());
+                }
+            }
+
+            // Validações
+            if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() ||
+                    sinopse.isEmpty() || generosSelecionados.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Todos os campos são obrigatórios!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (titulo.length() > 30 || ano.length() != 4 || sinopse.length() > 250) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Verifique os limites de caracteres!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            dialog.dispose();
+            enviarCriarFilme(titulo, diretor, ano, generosSelecionados, sinopse);
+        });
+
+        cancelarButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(salvarButton);
+        buttonPanel.add(cancelarButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
+    }
+
+    private void enviarCriarFilme(String titulo, String diretor, String ano,
+                                  java.util.List<String> generos, String sinopse) {
+        new Thread(() -> {
+            try {
+                CriarFilmeRequest.FilmeData filmeData = new CriarFilmeRequest.FilmeData(
+                        titulo, diretor, ano, generos, sinopse
+                );
+                CriarFilmeRequest request = new CriarFilmeRequest(filmeData, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ 📤 ENVIANDO: CRIAR_FILME");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ 📥 RECEBIDO: RESPOSTA CRIAR_FILME");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                            status.isSuccess() ? "Sucesso" : "Erro",
+                            status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                });
+
+            } catch (IOException e) {
+                addLog("❌ ERRO: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void handleEditarFilme() {
+        if (currentToken == null) return;
+
+        String idStr = JOptionPane.showInputDialog(this, "Digite o ID do filme a editar:");
+        if (idStr == null || idStr.isEmpty()) return;
+
+        // TODO: Buscar dados atuais do filme e pré-preencher
+        // Por enquanto, pede todos os dados novamente
+        JOptionPane.showMessageDialog(this,
+                "Funcionalidade: Editar Filme\nImplementar formulário similar ao criar",
+                "Info", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void handleExcluirFilme() {
+        if (currentToken == null) return;
+
+        String idStr = JOptionPane.showInputDialog(this, "Digite o ID do filme a excluir:");
+        if (idStr == null || idStr.isEmpty()) return;
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "⚠️ Tem certeza que deseja excluir o filme ID " + idStr + "?\n" +
+                        "Esta ação também excluirá todas as avaliações deste filme!",
+                "Confirmar Exclusão",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        new Thread(() -> {
+            try {
+                ExcluirFilmeRequest request = new ExcluirFilmeRequest(idStr, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ 📤 ENVIANDO: EXCLUIR_FILME");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ 📥 RECEBIDO: RESPOSTA EXCLUIR_FILME");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                            status.isSuccess() ? "Sucesso" : "Erro",
+                            status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                });
+
+            } catch (IOException e) {
+                addLog("❌ ERRO: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void mostrarCatalogoFilmes(java.util.List<FilmeDTO> filmes) {
+        JDialog dialog = new JDialog(this, "🎬 Catálogo de Filmes", true);
+        dialog.setSize(800, 600);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        if (filmes.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Nenhum filme cadastrado ainda.", SwingConstants.CENTER);
+            emptyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+            emptyLabel.setForeground(Color.GRAY);
+            dialog.add(emptyLabel, BorderLayout.CENTER);
+        } else {
+            // Painel de filmes com scroll
+            JPanel filmesPanel = new JPanel();
+            filmesPanel.setLayout(new BoxLayout(filmesPanel, BoxLayout.Y_AXIS));
+            filmesPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+            for (FilmeDTO filme : filmes) {
+                JPanel filmeCard = criarCardFilme(filme);
+                filmesPanel.add(filmeCard);
+                filmesPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            }
+
+            JScrollPane scrollPane = new JScrollPane(filmesPanel);
+            scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+            dialog.add(scrollPane, BorderLayout.CENTER);
+        }
+
+        // Botão fechar
+        JButton closeButton = new JButton("Fechar");
+        closeButton.addActionListener(e -> dialog.dispose());
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
+    }
+
 
     public static void main(String[] args) {
         try {
