@@ -44,6 +44,22 @@ public class FilmeRepository {
         }
     }
 
+    private double parseNota(String notaStr) {
+        if (notaStr == null || notaStr.isEmpty()) {
+            return 0.0;
+        }
+
+        // Substitui vírgula por ponto para parsing correto
+        String notaNormalizada = notaStr.replace(",", ".");
+
+        try {
+            return Double.parseDouble(notaNormalizada);
+        } catch (NumberFormatException e) {
+            System.err.println("AVISO: Não foi possível converter nota '" + notaStr + "', usando 0.0");
+            return 0.0;
+        }
+    }
+
     /**
      * Carrega filmes do arquivo JSON.
      */
@@ -66,7 +82,10 @@ public class FilmeRepository {
             int maxId = 0;
             for (FilmeDTO dto : filmesDTO) {
                 int id = Integer.parseInt(dto.id);
-                double nota = dto.nota != null && !dto.nota.isEmpty() ? Double.parseDouble(dto.nota) : 0.0;
+
+                // FIX: Usa o método parseNota que aceita vírgula ou ponto
+                double nota = parseNota(dto.nota);
+
                 int qtdAval = dto.qtdAvaliacoes != null && !dto.qtdAvaliacoes.isEmpty() ?
                         Integer.parseInt(dto.qtdAvaliacoes) : 0;
 
@@ -97,9 +116,12 @@ public class FilmeRepository {
         } catch (IOException e) {
             System.err.println("Erro ao carregar filmes.json: " + e.getMessage());
             return false;
+        } catch (NumberFormatException e) {
+            System.err.println("Erro ao converter dados numéricos: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
-
     /**
      * Salva filmes no arquivo JSON.
      */
@@ -115,7 +137,7 @@ public class FilmeRepository {
                         filme.getAno(),
                         filme.getGenero(),
                         filme.getSinopse(),
-                        String.format("%.1f", filme.getNota()),
+                        String.format("%.1f", filme.getNota()).replace(",", "."), // FIX: Garante ponto
                         String.valueOf(filme.getQtdAvaliacoes())
                 ));
             }
@@ -221,12 +243,13 @@ public class FilmeRepository {
                     filme.getAno(),
                     filme.getGenero(),
                     filme.getSinopse(),
-                    String.format("%.1f", filme.getNota()),
+                    String.format("%.1f", filme.getNota()).replace(",", "."), // FIX: Garante ponto
                     String.valueOf(filme.getQtdAvaliacoes())
             ));
         }
         return lista;
     }
+
 
     /**
      * Atualiza a nota do filme após uma avaliação.
