@@ -166,8 +166,17 @@ public class ServerGUI extends JFrame {
                 return;
             }
 
-            serverSocket = new ServerSocket(port);
+            addLog("Tentando criar ServerSocket...");
+            try {
+                serverSocket = new ServerSocket(port);
+                addLog("✓ ServerSocket criado");
+            }catch(Exception e){
+                addLog("❌ Erro ao criar ServerSocket: " + e.getMessage());
+                throw e;
+            }
+
             running = true;
+
 
             portField.setEnabled(false);
             startButton.setText("Parar Servidor");
