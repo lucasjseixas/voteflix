@@ -132,7 +132,6 @@ public class UsuarioRepository {
         }
     }
 
-
     /**
      * Salva usuários no arquivo JSON (id, usuario e senha).
      */

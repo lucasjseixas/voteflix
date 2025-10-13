@@ -86,7 +86,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 //        System.out.println("--------------------------------\n");
 //    }
 //
-//    // Método para exibir status quando solicitado
+//    // Metodo para exibir status quando solicitado
 //    public void exibirStatus() {
 //        System.out.println("\n╔════════════════════════════════════════╗");
 //        System.out.println("║  STATUS DO SERVIDOR                    ║");
@@ -219,7 +219,7 @@ public class SessionManager {
         System.out.println("--------------------------------\n");
     }
 
-    // Método para exibir status quando solicitado
+    // Metodo para exibir status quando solicitado
     public void exibirStatus() {
         System.out.println("\n╔════════════════════════════════════════╗");
         System.out.println("║  STATUS DO SERVIDOR                    ║");

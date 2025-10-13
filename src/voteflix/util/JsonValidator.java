@@ -86,12 +86,11 @@ public class JsonValidator {
      * @return true se válido, false caso contrário
      */
     public static boolean validateComplete(String jsonString) {
-        // 1. Valida as chaves
+        // Valida as chaves
         if (!validateKeys(jsonString)) {
             return false;
         }
-
-        // 2. Extrai e valida a operação
+        // Extrai e valida a operação
         try {
             JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 

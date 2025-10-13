@@ -130,7 +130,7 @@ public class ClientGUI extends JFrame {
 
         connectButton = new JButton("Conectar");
         connectButton.setBackground(new Color(34, 139, 34));
-        connectButton.setForeground(Color.WHITE);
+        connectButton.setForeground(Color.BLACK);
         connectButton.setFont(new Font("Arial", Font.BOLD, 11));
         connectButton.setFocusPainted(false);
         connectButton.addActionListener(e -> toggleConnection());
@@ -168,14 +168,14 @@ public class ClientGUI extends JFrame {
         loginButton = new JButton("Login");
         loginButton.setEnabled(false);
         loginButton.setBackground(new Color(70, 130, 180));
-        loginButton.setForeground(Color.WHITE);
+        loginButton.setForeground(Color.BLACK);
         loginButton.addActionListener(e -> handleLogin());
         buttonPanel.add(loginButton);
 
         registerButton = new JButton("Registrar");
         registerButton.setEnabled(false);
         registerButton.setBackground(new Color(60, 179, 113));
-        registerButton.setForeground(Color.WHITE);
+        registerButton.setForeground(Color.BLACK);
         registerButton.addActionListener(e -> handleRegister());
         buttonPanel.add(registerButton);
 
@@ -194,7 +194,7 @@ public class ClientGUI extends JFrame {
 
         logArea = new JTextArea();
         logArea.setEditable(false);
-        logArea.setFont(new Font("Consolas", Font.PLAIN, 10));
+        logArea.setFont(new Font("Consolas", Font.PLAIN, 12));
         logArea.setBackground(new Color(30, 30, 30));
         logArea.setForeground(new Color(200, 200, 200));
         logArea.setLineWrap(true);
@@ -248,7 +248,7 @@ public class ClientGUI extends JFrame {
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setBackground(Color.WHITE);
 
-        JLabel tituloLabel = new JLabel("🎬 " + filme.titulo);
+        JLabel tituloLabel = new JLabel(filme.titulo);
         tituloLabel.setFont(new Font("Arial", Font.BOLD, 16));
         tituloLabel.setForeground(new Color(70, 130, 180));
 
@@ -275,7 +275,7 @@ public class ClientGUI extends JFrame {
         notaPanel.setBackground(Color.WHITE);
         notaPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JLabel notaLabel = new JLabel("⭐ " + filme.nota);
+        JLabel notaLabel = new JLabel(filme.nota);
         notaLabel.setFont(new Font("Arial", Font.BOLD, 24));
         notaLabel.setForeground(new Color(255, 165, 0));
         notaLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -530,7 +530,7 @@ public class ClientGUI extends JFrame {
     private void loadUserOperations() {
         operationsPanel.removeAll();
 
-        addOperationButton("🎬 Ver Catálogo de Filmes", this::handleVerFilmes);
+        addOperationButton("Ver Catálogo de Filmes", this::handleVerFilmes);
 
         if ("admin".equals(currentFuncao)) {
             addOperationButton("Listar Todos os Usuários", this::handleListUsers);
@@ -553,7 +553,7 @@ public class ClientGUI extends JFrame {
     }
 
     private void mostrarFormularioEdicao(FilmeDTO filmeOriginal) {
-        JDialog dialog = new JDialog(this, "✏️ Editar Filme ID " + filmeOriginal.id, true);
+        JDialog dialog = new JDialog(this, "Editar Filme ID " + filmeOriginal.id, true);
         dialog.setSize(500, 550);
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
@@ -610,8 +610,8 @@ public class ClientGUI extends JFrame {
 
         // Botões
         JPanel buttonPanel = new JPanel();
-        JButton salvarButton = new JButton("💾 Salvar Alterações");
-        JButton cancelarButton = new JButton("❌ Cancelar");
+        JButton salvarButton = new JButton("Salvar Alterações");
+        JButton cancelarButton = new JButton("Cancelar");
 
         salvarButton.addActionListener(e -> {
             String titulo = tituloField.getText().trim();
@@ -1343,7 +1343,7 @@ public class ClientGUI extends JFrame {
     }
 
     private void mostrarCatalogoFilmes(java.util.List<FilmeDTO> filmes) {
-        JDialog dialog = new JDialog(this, "🎬 Catálogo de Filmes", true);
+        JDialog dialog = new JDialog(this, "Catálogo de Filmes", true);
         dialog.setSize(800, 600);
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
