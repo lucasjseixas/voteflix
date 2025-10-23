@@ -77,11 +77,11 @@ public class ServerService {
         try {
             CadastrarUsuarioRequest req = GSON.fromJson(jsonRequest, CadastrarUsuarioRequest.class);
 
-            String usuario = req.usuario;
-            String senha = req.senha;
+            // Acessa dados aninhados
+            String usuario = req.usuario.nome;
+            String senha = req.usuario.senha;
 
             // --- VALIDAÇÃO DE TAMANHO E FORMATO (Requisito) ---
-            // O Cliente já valida, mas o Servidor DEVE repetir a validação.
             if (usuario == null || senha == null ||
                     usuario.length() < 3 || usuario.length() > 20 ||
                     senha.length() < 3 || senha.length() > 20) {
@@ -91,11 +91,11 @@ public class ServerService {
             }
 
             // --- VALIDAÇÃO DE UNICIDADE (Lógica de Negócio) ---
-            Usuario novoUsuario = usuarioRepository.addComum(req.usuario, req.senha);
+            Usuario novoUsuario = usuarioRepository.addComum(usuario, senha);
 
             if (novoUsuario == null) {
                 // Usuário já existe
-                System.out.println("  -> Cadastro falhou: Usuário '" + req.usuario + "' já existe (409).");
+                System.out.println("  -> Cadastro falhou: Usuário '" + usuario + "' já existe (409).");
                 return createStatusResponse("409"); // Already exists
             }
 
@@ -104,8 +104,7 @@ public class ServerService {
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar Cadastro: " + e.getMessage());
-            // Qualquer outra falha (parsing, I/O)
-            return createStatusResponse("500"); // Internal Server Error (se for falha de lógica/sistema)
+            return createStatusResponse("500"); // Internal Server Error
         }
     }
 

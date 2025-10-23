@@ -5,16 +5,27 @@ import com.google.gson.annotations.SerializedName;
 public class CadastrarUsuarioRequest extends RequestBase {
 
     @SerializedName("usuario")
-    public String usuario;
-
-    @SerializedName("senha")
-    public String senha;
+    public UsuarioData usuario;
 
     public CadastrarUsuarioRequest() {}
 
-    public CadastrarUsuarioRequest(String usuario, String senha) {
+    public CadastrarUsuarioRequest(String nome, String senha) {
         super("CRIAR_USUARIO");
-        this.usuario = usuario;
-        this.senha = senha;
+        this.usuario = new UsuarioData(nome, senha);
+    }
+
+    public static class UsuarioData {
+        @SerializedName("nome")
+        public String nome;
+
+        @SerializedName("senha")
+        public String senha;
+
+        public UsuarioData() {}
+
+        public UsuarioData(String nome, String senha) {
+            this.nome = nome;
+            this.senha = senha;
+        }
     }
 }

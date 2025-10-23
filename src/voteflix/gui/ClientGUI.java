@@ -5,8 +5,9 @@ import voteflix.dto.request.*;
 import voteflix.dto.response.*;
 import voteflix.util.HttpStatus;
 import com.google.gson.Gson;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
+// ❌ REMOVIDO - Cliente não decodifica JWT
+// import com.auth0.jwt.JWT;
+// import com.auth0.jwt.interfaces.DecodedJWT;
 
 import voteflix.dto.FilmeDTO;
 import voteflix.dto.request.CriarFilmeRequest;
@@ -52,11 +53,10 @@ public class ClientGUI extends JFrame {
     private BufferedReader in;
     private boolean connected = false;
 
-    // Sessão JWT
+    // Sessão
     private String currentToken = null;
     private String currentUsuario = null;
     private String currentFuncao = null;
-    private int currentIdUsuario = -1;
 
     public ClientGUI() {
         setTitle("VoteFlix - Cliente");
@@ -332,7 +332,6 @@ public class ClientGUI extends JFrame {
 
             socket = new Socket(ip, port);
 
-            // FIX: Especifica UTF-8 explicitamente
             out = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8),
                     true
@@ -393,7 +392,6 @@ public class ClientGUI extends JFrame {
     }
 
     private void handleLogin() {
-        // BUG FIX: Impede login se já estiver logado
         if (currentToken != null) {
             JOptionPane.showMessageDialog(this,
                     "Você já está logado como " + currentUsuario + "!\nFaça logout antes de logar com outra conta.",
@@ -411,7 +409,6 @@ public class ClientGUI extends JFrame {
 
         new Thread(() -> {
             try {
-                // Cria requisição usando DTO
                 LoginRequest request = new LoginRequest(usuario, senha);
                 String jsonRequest = GSON.toJson(request);
 
@@ -428,30 +425,24 @@ public class ClientGUI extends JFrame {
                 addLog("│ " + jsonResponse);
                 addLog("└" + "─".repeat(48) + "┘");
 
-                // Desserializa resposta usando DTO
                 LoginResponse response = GSON.fromJson(jsonResponse, LoginResponse.class);
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 if (status == HttpStatus.OK && response.token != null) {
-                    // Armazena token
+                    // ✅ Apenas armazena o token (opaco)
                     currentToken = response.token;
+                    currentUsuario = usuario;
 
-                    // Decodifica JWT para extrair claims
-                    DecodedJWT decodedJWT = JWT.decode(currentToken);
-                    currentIdUsuario = decodedJWT.getClaim("id").asInt();
-                    currentUsuario = decodedJWT.getClaim("usuario").asString();
-                    currentFuncao = decodedJWT.getClaim("funcao").asString();
+                    // ✅ Hardcode simples para contexto acadêmico
+                    currentFuncao = usuario.equals("admin") ? "admin" : "user";
 
                     SwingUtilities.invokeLater(() -> {
-                        // BUG FIX: Limpa campos após login bem-sucedido
                         userField.setText("");
                         passField.setText("");
-
-                        // Desabilita botões de login/registro
                         loginButton.setEnabled(false);
                         registerButton.setEnabled(false);
 
-                        userInfoLabel.setText("👤 " + currentUsuario + " (" + currentFuncao + ") | ID: " + currentIdUsuario);
+                        userInfoLabel.setText("👤 " + currentUsuario + " (" + currentFuncao + ")");
                         loadUserOperations();
                         JOptionPane.showMessageDialog(this,
                                 "Login realizado com sucesso!\nBem-vindo, " + currentUsuario,
@@ -487,7 +478,6 @@ public class ClientGUI extends JFrame {
 
         new Thread(() -> {
             try {
-                // Cria requisição usando DTO
                 CadastrarUsuarioRequest request = new CadastrarUsuarioRequest(usuario, senha);
                 String jsonRequest = GSON.toJson(request);
 
@@ -504,7 +494,6 @@ public class ClientGUI extends JFrame {
                 addLog("│ " + jsonResponse);
                 addLog("└" + "─".repeat(48) + "┘");
 
-                // Desserializa resposta
                 ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
@@ -561,7 +550,6 @@ public class ClientGUI extends JFrame {
         JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
         formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // Pré-preenche campos com dados atuais
         JTextField tituloField = new JTextField(filmeOriginal.titulo);
         JTextField diretorField = new JTextField(filmeOriginal.diretor);
         JTextField anoField = new JTextField(filmeOriginal.ano);
@@ -569,7 +557,6 @@ public class ClientGUI extends JFrame {
         sinopseArea.setLineWrap(true);
         sinopseArea.setWrapStyleWord(true);
 
-        // Gêneros com checkboxes (pré-marca os gêneros atuais)
         String[] generosDisponiveis = {
                 "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
                 "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
@@ -579,7 +566,6 @@ public class ClientGUI extends JFrame {
         java.util.List<JCheckBox> generoCheckboxes = new ArrayList<>();
         for (String genero : generosDisponiveis) {
             JCheckBox cb = new JCheckBox(genero);
-            // Marca se o filme já tem esse gênero
             cb.setSelected(filmeOriginal.genero.contains(genero));
             generoCheckboxes.add(cb);
             generoPanel.add(cb);
@@ -598,7 +584,6 @@ public class ClientGUI extends JFrame {
 
         dialog.add(formPanel, BorderLayout.CENTER);
 
-        // Painel de informações (nota não pode ser editada)
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         infoPanel.setBorder(new EmptyBorder(0, 20, 10, 20));
         JLabel infoLabel = new JLabel("⭐ Nota atual: " + filmeOriginal.nota +
@@ -608,7 +593,6 @@ public class ClientGUI extends JFrame {
         infoPanel.add(infoLabel);
         dialog.add(infoPanel, BorderLayout.NORTH);
 
-        // Botões
         JPanel buttonPanel = new JPanel();
         JButton salvarButton = new JButton("Salvar Alterações");
         JButton cancelarButton = new JButton("Cancelar");
@@ -626,7 +610,6 @@ public class ClientGUI extends JFrame {
                 }
             }
 
-            // Validações
             if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() ||
                     sinopse.isEmpty() || generosSelecionados.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog,
@@ -672,7 +655,7 @@ public class ClientGUI extends JFrame {
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setFont(new Font("Arial", Font.PLAIN, 12));
         button.setBackground(new Color(70, 130, 180));
-        button.setForeground(Color.BLACK); // BUG FIX: Cor preta para melhor legibilidade
+        button.setForeground(Color.BLACK);
         button.setFocusPainted(false);
         button.addActionListener(e -> new Thread(action).start());
 
@@ -690,12 +673,10 @@ public class ClientGUI extends JFrame {
         currentToken = null;
         currentUsuario = null;
         currentFuncao = null;
-        currentIdUsuario = -1;
         userInfoLabel.setText("");
         userField.setText("");
         passField.setText("");
 
-        // BUG FIX: Reabilita botões de login/registro ao limpar sessão
         if (connected) {
             loginButton.setEnabled(true);
             registerButton.setEnabled(true);
@@ -734,7 +715,7 @@ public class ClientGUI extends JFrame {
                         StringBuilder sb = new StringBuilder("=== LISTA DE USUÁRIOS ===\n\n");
                         for (UsuarioDTO user : response.usuarios) {
                             sb.append("ID: ").append(user.id)
-                                    .append(" | Usuário: ").append(user.usuario)
+                                    .append(" | Nome: ").append(user.nome)
                                     .append("\n");
                         }
                         sb.append("\nTotal: ").append(response.usuarios.size()).append(" usuário(s)");
@@ -876,7 +857,6 @@ public class ClientGUI extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     if (status == HttpStatus.OK) {
                         String info = "=== MEUS DADOS ===\n\n" +
-                                "ID: " + currentIdUsuario + "\n" +
                                 "Usuário: " + response.usuario + "\n" +
                                 "Função: " + currentFuncao;
                         JOptionPane.showMessageDialog(this, info, "Meus Dados", JOptionPane.INFORMATION_MESSAGE);
@@ -973,10 +953,8 @@ public class ClientGUI extends JFrame {
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                         disconnect();
                     } else if (status == HttpStatus.FORBIDDEN) {
-                        // Admin não pode se excluir, mas continua logado
                         JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
                     } else {
-                        // Outros erros: limpa sessão local e desconecta por segurança
                         JOptionPane.showMessageDialog(this,
                                 status.getFormattedMessage() + "\nVocê será desconectado por segurança.",
                                 "Erro", JOptionPane.ERROR_MESSAGE);
@@ -1061,7 +1039,6 @@ public class ClientGUI extends JFrame {
     private void handleVerFilmes() {
         new Thread(() -> {
             try {
-                // CORRIGIDO: Usa DTO ao invés de JSON manual
                 ListarFilmesRequest request = new ListarFilmesRequest();
                 String jsonRequest = GSON.toJson(request);
 
@@ -1100,7 +1077,6 @@ public class ClientGUI extends JFrame {
     private void handleAdicionarFilme() {
         if (currentToken == null) return;
 
-        // Dialog customizado para entrada de dados
         JDialog dialog = new JDialog(this, "➕ Adicionar Novo Filme", true);
         dialog.setSize(500, 550);
         dialog.setLocationRelativeTo(this);
@@ -1116,7 +1092,6 @@ public class ClientGUI extends JFrame {
         sinopseArea.setLineWrap(true);
         sinopseArea.setWrapStyleWord(true);
 
-        // Gêneros com checkboxes
         String[] generosDisponiveis = {
                 "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
                 "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
@@ -1143,7 +1118,6 @@ public class ClientGUI extends JFrame {
 
         dialog.add(formPanel, BorderLayout.CENTER);
 
-        // Botões
         JPanel buttonPanel = new JPanel();
         JButton salvarButton = new JButton("💾 Salvar");
         JButton cancelarButton = new JButton("❌ Cancelar");
@@ -1161,7 +1135,6 @@ public class ClientGUI extends JFrame {
                 }
             }
 
-            // Validações
             if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() ||
                     sinopse.isEmpty() || generosSelecionados.isEmpty()) {
                 JOptionPane.showMessageDialog(dialog,
@@ -1231,7 +1204,6 @@ public class ClientGUI extends JFrame {
     private void handleEditarFilme() {
         if (currentToken == null) return;
 
-        // Primeiro, busca a lista de filmes para o usuário escolher
         new Thread(() -> {
             try {
                 ListarFilmesRequest request = new ListarFilmesRequest();
@@ -1245,14 +1217,12 @@ public class ClientGUI extends JFrame {
 
                 if (status == HttpStatus.OK && response.filmes != null && !response.filmes.isEmpty()) {
                     SwingUtilities.invokeLater(() -> {
-                        // Cria lista de opções com ID e título
                         String[] opcoes = new String[response.filmes.size()];
                         for (int i = 0; i < response.filmes.size(); i++) {
                             FilmeDTO filme = response.filmes.get(i);
                             opcoes[i] = "ID " + filme.id + " - " + filme.titulo;
                         }
 
-                        // Usuário seleciona qual filme editar
                         String escolha = (String) JOptionPane.showInputDialog(
                                 this,
                                 "Selecione o filme a editar:",
@@ -1264,10 +1234,8 @@ public class ClientGUI extends JFrame {
                         );
 
                         if (escolha != null) {
-                            // Extrai o ID da escolha
                             String idStr = escolha.substring(3, escolha.indexOf(" -"));
 
-                            // Busca o filme selecionado
                             FilmeDTO filmeSelecionado = null;
                             for (FilmeDTO f : response.filmes) {
                                 if (f.id.equals(idStr)) {
@@ -1354,7 +1322,6 @@ public class ClientGUI extends JFrame {
             emptyLabel.setForeground(Color.GRAY);
             dialog.add(emptyLabel, BorderLayout.CENTER);
         } else {
-            // Painel de filmes com scroll
             JPanel filmesPanel = new JPanel();
             filmesPanel.setLayout(new BoxLayout(filmesPanel, BoxLayout.Y_AXIS));
             filmesPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -1370,7 +1337,6 @@ public class ClientGUI extends JFrame {
             dialog.add(scrollPane, BorderLayout.CENTER);
         }
 
-        // Botão fechar
         JButton closeButton = new JButton("Fechar");
         closeButton.addActionListener(e -> dialog.dispose());
         JPanel buttonPanel = new JPanel();
@@ -1417,7 +1383,6 @@ public class ClientGUI extends JFrame {
             }
         }).start();
     }
-
 
     public static void main(String[] args) {
         try {

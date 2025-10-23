@@ -1,11 +1,11 @@
 package voteflix.service;
 
 import com.google.gson.Gson;
-import voteflix.auth.AuthResponse;
 import voteflix.dto.UsuarioDTO;
 import voteflix.dto.request.*;
 import voteflix.dto.response.ListarProprioUsuarioResponse;
 import voteflix.dto.response.ListarUsuariosResponse;
+import voteflix.dto.response.LoginResponse;
 import voteflix.dto.response.ResponsePadrao;
 import voteflix.util.HttpStatus;
 
@@ -19,7 +19,6 @@ import voteflix.dto.request.EditarFilmeRequest;
 import voteflix.dto.request.ExcluirFilmeRequest;
 import voteflix.dto.response.ListarFilmesResponse;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class ClientService {
@@ -34,7 +33,6 @@ public class ClientService {
     private String currentToken = null;
     private String currentFuncao = null;
     private String currentUsuario = null;
-    private int currentIdUsuario = -1;
 
     // Construtor: Recebe os objetos de I/O criados no main do cliente
     public ClientService(PrintWriter out, BufferedReader in, BufferedReader stdIn) {
@@ -48,6 +46,10 @@ public class ClientService {
         return currentToken;
     }
 
+    public String getCurrentFuncao() {
+        return currentFuncao;
+    }
+
     public void handleLogin() throws IOException {
         System.out.print("Usuário: ");
         String usuario = stdIn.readLine();
@@ -57,50 +59,43 @@ public class ClientService {
         LoginRequest req = new LoginRequest(usuario, senha);
         String jsonRequest = GSON.toJson(req);
 
-        // O que está sendo enviado ao SERVIDOR
         System.out.println("Enviando: " + jsonRequest);
         out.println(jsonRequest);
 
-        // O que está sendo recebido no CLIENTE
         String jsonResponse = in.readLine();
         System.out.println("Servidor retornou: " + jsonResponse);
 
         if (jsonResponse != null) {
             try {
-                AuthResponse res = GSON.fromJson(jsonResponse, AuthResponse.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
+                LoginResponse res = GSON.fromJson(jsonResponse, LoginResponse.class);
+                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status == HttpStatus.OK) {
-                    currentToken = res.getToken();
+                if (status == HttpStatus.OK && res.token != null) {
+                    // ✅ Apenas armazena o token (opaco)
+                    currentToken = res.token;
+                    currentUsuario = usuario;
 
-                    // Extrai claims do token
-                    com.auth0.jwt.interfaces.DecodedJWT decodedJWT =
-                            com.auth0.jwt.JWT.decode(currentToken);
-
-                    // MUDANÇA: extrai ID do claim ao invés do subject
-                    currentIdUsuario = decodedJWT.getClaim("id").asInt();
-                    currentFuncao = decodedJWT.getClaim("funcao").asString();
-                    currentUsuario = decodedJWT.getClaim("usuario").asString();
+                    // ✅ Hardcode simples para contexto acadêmico
+                    currentFuncao = usuario.equals("admin") ? "admin" : "user";
 
                     System.out.println(status.getFormattedMessage());
-                    System.out.println("Bem-vindo, " + currentUsuario + " (ID: " + currentIdUsuario + ", " + currentFuncao + ")");
+                    System.out.println("Bem-vindo, " + currentUsuario +
+                            (currentFuncao.equals("admin") ? " (Administrador)" : ""));
                 } else {
                     System.err.println(status.getFormattedMessage());
-                    currentToken = null;
-                    currentFuncao = null;
+                    clearSession();
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
-                currentToken = null;
-                currentFuncao = null;
+                clearSession();
             }
         }
-
-
     }
 
-    public String getCurrentFuncao() {
-        return currentFuncao;
+    private void clearSession() {
+        currentToken = null;
+        currentFuncao = null;
+        currentUsuario = null;
     }
 
     public void handleLogout() throws IOException {
@@ -128,10 +123,7 @@ public class ClientService {
                 } else {
                     System.err.println(status.getFormattedMessage() + " Removendo token local por segurança.");
                 }
-                currentToken = null;
-                currentFuncao = null;
-                currentUsuario = null;
-                currentIdUsuario = -1;
+                clearSession();
             } catch (Exception e) {
                 System.err.println("Erro ao processar o JSON de resposta do servidor: " + e.getMessage());
             }
@@ -216,7 +208,6 @@ public class ClientService {
         System.out.print("Nova Senha (3-20 caracteres): ");
         String novaSenha = stdIn.readLine();
 
-        // Validação no cliente
         if (novaSenha.length() < 3 || novaSenha.length() > 20) {
             System.err.println("Erro: A senha deve ter entre 3 e 20 caracteres.");
             return;
@@ -281,27 +272,18 @@ public class ClientService {
                     case OK:
                         System.out.println(status.getFormattedMessage());
                         System.out.println("Você foi desconectado.");
-                        currentToken = null;
-                        currentFuncao = null;
-                        currentUsuario = null;
-                        currentIdUsuario = -1;
+                        clearSession();
                         break;
                     case UNAUTHORIZED:
                     case NOT_FOUND:
                         System.err.println(status.getFormattedMessage());
-                        // Limpa o token local por segurança
-                        currentToken = null;
-                        currentFuncao = null;
-                        currentUsuario = null;
-                        currentIdUsuario = -1;
+                        clearSession();
                         break;
                     case FORBIDDEN:
                         System.err.println(status.getFormattedMessage());
-                        // NÃO limpa token - admin não pode se excluir mas continua logado
                         break;
                     default:
                         System.err.println(status.getFormattedMessage());
-                        // Outros erros não limpam token
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -309,9 +291,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * ADMIN: Lista todos os usuários
-     */
     public void handleListarUsuarios() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -335,7 +314,7 @@ public class ClientService {
                 if (status == HttpStatus.OK && res.usuarios != null) {
                     System.out.println("\n=== LISTA DE USUÁRIOS ===");
                     for (UsuarioDTO user : res.usuarios) {
-                        System.out.println("ID: " + user.id + " | Usuário: " + user.usuario);
+                        System.out.println("ID: " + user.id + " | Nome: " + user.nome);
                     }
                     System.out.println("Total: " + res.usuarios.size() + " usuário(s)");
                     System.out.println("========================\n");
@@ -348,9 +327,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * ADMIN: Edita senha de outro usuário
-     */
     public void handleAdminEditarUsuario() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -394,9 +370,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * ADMIN: Exclui usuário comum
-     */
     public void handleAdminExcluirUsuario() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -443,7 +416,8 @@ public class ClientService {
     public void handleVerFilmes() throws IOException {
         System.out.println("\n--- CATÁLOGO DE FILMES ---");
 
-        String jsonRequest = "{\"operacao\":\"LISTAR_FILMES\"}";
+        ListarFilmesRequest req = new ListarFilmesRequest();
+        String jsonRequest = GSON.toJson(req);
 
         System.out.println("Enviando: " + jsonRequest);
         out.println(jsonRequest);
@@ -540,7 +514,6 @@ public class ClientService {
         System.out.print("Sinopse (max 250 caracteres): ");
         String sinopse = stdIn.readLine().trim();
 
-        // Validações
         if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || sinopse.isEmpty()) {
             System.err.println("Erro: Todos os campos são obrigatórios.");
             return;
@@ -642,7 +615,6 @@ public class ClientService {
         System.out.print("Nova Sinopse (max 250): ");
         String sinopse = stdIn.readLine().trim();
 
-        // Validações
         if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || generos.isEmpty() || sinopse.isEmpty()) {
             System.err.println("Erro: Todos os campos são obrigatórios.");
             return;
@@ -723,5 +695,4 @@ public class ClientService {
             }
         }
     }
-
 }

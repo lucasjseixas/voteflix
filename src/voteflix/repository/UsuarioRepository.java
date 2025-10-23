@@ -1,6 +1,5 @@
 package voteflix.repository;
 
-import voteflix.dto.request.AdminExcluirUsuarioRequest;
 import voteflix.entity.Usuario;
 import voteflix.dto.UsuarioDTO;
 import com.google.gson.Gson;
@@ -21,35 +20,8 @@ public class UsuarioRepository {
     private static final String DATA_FILE = "src/data/usuarios.json";
     private static final Gson GSON = new Gson();
 
-    // Simula a tabela de usuários
     private final ConcurrentHashMap<String, Usuario> usuarios = new ConcurrentHashMap<>();
-
-    // Contador de IDs para novos usuários
     private final AtomicInteger nextId = new AtomicInteger(1);
-
-//    public UsuarioRepository() {
-//        // Cria diretório data/ se não existir
-//        try {
-//            Path dataDir = Paths.get("data");
-//            if (!Files.exists(dataDir)) {
-//                Files.createDirectories(dataDir);
-//                System.out.println("-> Diretório 'data/' criado.");
-//            }
-//        } catch (IOException e) {
-//            System.err.println("Erro ao criar diretório data/: " + e.getMessage());
-//        }
-//
-//        // Tenta carregar usuários do arquivo
-//        if (carregarUsuarios()) {
-//            System.out.println("-> Usuários carregados do arquivo JSON.");
-//        } else {
-//            // Se não conseguiu carregar, cria admin padrão
-//            Usuario admin = Usuario.createAdmin("admin");
-//            usuarios.put(admin.getUsuario(), admin);
-//            System.out.println("-> Administrador pré-cadastrado: ID 0, Usuario: admin");
-//            salvarUsuarios();
-//        }
-//    }
 
     public UsuarioRepository() {
         try {
@@ -103,13 +75,13 @@ public class UsuarioRepository {
             for (UsuarioDTO dto : usuariosDTO) {
                 int id = Integer.parseInt(dto.id);
 
-                System.out.println("   -> Carregando usuario: ID " + id + ", Usuario: " + dto.usuario);
+                System.out.println("   -> Carregando usuario: ID " + id + ", Nome: " + dto.nome);
 
                 // Determina a função baseado no ID
                 String funcao = (id == 0) ? "admin" : "user";
 
                 // Recria o usuário completo
-                Usuario usuario = new Usuario(id, dto.usuario, dto.senha, funcao);
+                Usuario usuario = new Usuario(id, dto.nome, dto.senha, funcao);
                 usuarios.put(usuario.getUsuario(), usuario);
 
                 if (id > maxId) {
@@ -133,7 +105,7 @@ public class UsuarioRepository {
     }
 
     /**
-     * Salva usuários no arquivo JSON (id, usuario e senha).
+     * Salva usuários no arquivo JSON (id, nome e senha).
      */
     private void salvarUsuarios() {
         try {
@@ -143,7 +115,7 @@ public class UsuarioRepository {
             for (Usuario usuario : usuarios.values()) {
                 UsuarioDTO dto = new UsuarioDTO();
                 dto.id = String.valueOf(usuario.getId());
-                dto.usuario = usuario.getUsuario();
+                dto.nome = usuario.getUsuario();
                 dto.senha = usuario.getSenha();
 
                 usuariosDTO.add(dto);
@@ -233,8 +205,8 @@ public class UsuarioRepository {
         for (Usuario usuario : usuarios.values()) {
             UsuarioDTO dto = new UsuarioDTO();
             dto.id = String.valueOf(usuario.getId());
-            dto.usuario = usuario.getUsuario();
-            dto.senha = null;
+            dto.nome = usuario.getUsuario();
+            dto.senha = null; // Não retorna senha
 
             lista.add(dto);
         }
@@ -289,5 +261,4 @@ public class UsuarioRepository {
         salvarUsuarios();
         return true;
     }
-
 }
