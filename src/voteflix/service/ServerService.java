@@ -575,6 +575,24 @@ public class ServerService {
 
     public String handleListarFilmes(String jsonRequest) {
         try {
+            ListarFilmesRequest req =  GSON.fromJson(jsonRequest, ListarFilmesRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("  -> LISTAR_FILMES falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            // Valida o token
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+
+            if (decodedJWT == null) {
+                System.out.println("  -> LISTAR_FILMES falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            System.out.println("chegou no filme");
             List<FilmeDTO> filmes = filmeRepository.getAllFilmes();
 
             System.out.println("  -> LISTAR_FILMES BEM-SUCEDIDO: " + filmes.size() + " filme(s) retornado(s).");

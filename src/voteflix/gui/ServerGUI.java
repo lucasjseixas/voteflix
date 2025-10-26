@@ -169,9 +169,9 @@ public class ServerGUI extends JFrame {
             addLog("Tentando criar ServerSocket...");
             try {
                 serverSocket = new ServerSocket(port);
-                addLog("✓ ServerSocket criado");
+                addLog("ServerSocket criado");
             }catch(Exception e){
-                addLog("❌ Erro ao criar ServerSocket: " + e.getMessage());
+                addLog("Erro ao criar ServerSocket: " + e.getMessage());
                 throw e;
             }
 

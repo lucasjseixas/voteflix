@@ -396,9 +396,14 @@ public class ClientService {
     }
 
     public void handleVerFilmes() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
         System.out.println("\n--- CATÁLOGO DE FILMES ---");
 
-        ListarFilmesRequest req = new ListarFilmesRequest();
+        ListarFilmesRequest req = new ListarFilmesRequest(currentToken);
         String jsonRequest = GSON.toJson(req);
 
         System.out.println("Enviando: " + jsonRequest);

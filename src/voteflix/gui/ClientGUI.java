@@ -1039,7 +1039,7 @@ public class ClientGUI extends JFrame {
     private void handleVerFilmes() {
         new Thread(() -> {
             try {
-                ListarFilmesRequest request = new ListarFilmesRequest();
+                ListarFilmesRequest request = new ListarFilmesRequest(currentToken);
                 String jsonRequest = GSON.toJson(request);
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
@@ -1206,7 +1206,7 @@ public class ClientGUI extends JFrame {
 
         new Thread(() -> {
             try {
-                ListarFilmesRequest request = new ListarFilmesRequest();
+                ListarFilmesRequest request = new ListarFilmesRequest(currentToken);
                 String jsonRequest = GSON.toJson(request);
 
                 out.println(jsonRequest);
