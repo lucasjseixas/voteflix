@@ -451,7 +451,7 @@ public class ClientGUI extends JFrame {
                 } else {
                     SwingUtilities.invokeLater(() -> {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage(),
+                                status.getMessage(),
                                 "Erro no Login", JOptionPane.ERROR_MESSAGE);
                     });
                 }
@@ -500,12 +500,12 @@ public class ClientGUI extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     if (status == HttpStatus.CREATED) {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage(),
+                                status.getMessage(),
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                         passField.setText("");
                     } else {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage(),
+                                status.getMessage(),
                                 "Erro no Cadastro", JOptionPane.ERROR_MESSAGE);
                     }
                 });
@@ -727,7 +727,7 @@ public class ClientGUI extends JFrame {
 
                         JOptionPane.showMessageDialog(this, scrollPane, "Lista de Usuários", JOptionPane.INFORMATION_MESSAGE);
                     } else {
-                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, status.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
                     }
                 });
 
@@ -773,7 +773,7 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status.getMessage(),
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });
@@ -819,7 +819,7 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status.getMessage(),
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });
@@ -861,7 +861,7 @@ public class ClientGUI extends JFrame {
                                 "Função: " + currentFuncao;
                         JOptionPane.showMessageDialog(this, info, "Meus Dados", JOptionPane.INFORMATION_MESSAGE);
                     } else {
-                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, status.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
                     }
                 });
 
@@ -904,7 +904,7 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status,
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });
@@ -953,10 +953,10 @@ public class ClientGUI extends JFrame {
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                         disconnect();
                     } else if (status == HttpStatus.FORBIDDEN) {
-                        JOptionPane.showMessageDialog(this, status.getFormattedMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, status.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
                     } else {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage() + "\nVocê será desconectado por segurança.",
+                                status.getMessage() + "\nVocê será desconectado por segurança.",
                                 "Erro", JOptionPane.ERROR_MESSAGE);
                         disconnect();
                     }
@@ -1010,7 +1010,7 @@ public class ClientGUI extends JFrame {
                                 "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage() + "\nVocê será desconectado por segurança.",
+                                status.getMessage() + "\nVocê será desconectado por segurança.",
                                 "Aviso", JOptionPane.WARNING_MESSAGE);
                     }
 
@@ -1063,7 +1063,7 @@ public class ClientGUI extends JFrame {
                         mostrarCatalogoFilmes(response.filmes);
                     } else {
                         JOptionPane.showMessageDialog(this,
-                                status.getFormattedMessage(),
+                                status.getMessage(),
                                 "Erro", JOptionPane.ERROR_MESSAGE);
                     }
                 });
@@ -1119,8 +1119,8 @@ public class ClientGUI extends JFrame {
         dialog.add(formPanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel();
-        JButton salvarButton = new JButton("💾 Salvar");
-        JButton cancelarButton = new JButton("❌ Cancelar");
+        JButton salvarButton = new JButton("Salvar");
+        JButton cancelarButton = new JButton("Cancelar");
 
         salvarButton.addActionListener(e -> {
             String titulo = tituloField.getText().trim();
@@ -1190,7 +1190,7 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status.getMessage(),
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });
@@ -1270,7 +1270,7 @@ public class ClientGUI extends JFrame {
         if (idStr == null || idStr.isEmpty()) return;
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "⚠️ Tem certeza que deseja excluir o filme ID " + idStr + "?\n" +
+                "Tem certeza que deseja excluir o filme ID " + idStr + "?\n" +
                         "Esta ação também excluirá todas as avaliações deste filme!",
                 "Confirmar Exclusão",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -1283,7 +1283,7 @@ public class ClientGUI extends JFrame {
                 String jsonRequest = GSON.toJson(request);
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ 📤 ENVIANDO: EXCLUIR_FILME");
+                addLog("│ ENVIANDO: EXCLUIR_FILME");
                 addLog("│ " + jsonRequest);
                 addLog("└" + "─".repeat(48) + "┘");
 
@@ -1291,7 +1291,7 @@ public class ClientGUI extends JFrame {
                 String jsonResponse = in.readLine();
 
                 addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ 📥 RECEBIDO: RESPOSTA EXCLUIR_FILME");
+                addLog("│ RECEBIDO: RESPOSTA EXCLUIR_FILME");
                 addLog("│ " + jsonResponse);
                 addLog("└" + "─".repeat(48) + "┘");
 
@@ -1299,13 +1299,13 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status.getMessage(),
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });
 
             } catch (IOException e) {
-                addLog("❌ ERRO: " + e.getMessage());
+                addLog("ERRO: " + e.getMessage());
             }
         }).start();
     }
@@ -1373,7 +1373,7 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, status.getFormattedMessage(),
+                    JOptionPane.showMessageDialog(this, status.getMessage(),
                             status.isSuccess() ? "Sucesso" : "Erro",
                             status.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 });

@@ -11,6 +11,7 @@ import voteflix.repository.FilmeRepository;
 import voteflix.repository.UsuarioRepository;
 import voteflix.session.SessionManager;
 import voteflix.util.GeneroFilme;
+import voteflix.util.HttpStatus;
 
 import java.util.List;
 
@@ -22,57 +23,47 @@ public class ServerService {
     private final Autenticacao AUTH = new Autenticacao();
 
 
-    /**
-     * Gera uma resposta JSON simples de status.
-     * @param status O código de status a ser retornado (ex: "201", "400").
-     * @return A string JSON serializada.
-     */
-    public String createStatusResponse(String status) {
-        return GSON.toJson(new ResponsePadrao(status));
+
+    public String createStatusResponse(String statusCode) {
+        HttpStatus status = HttpStatus.fromCode(statusCode);
+        return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
     }
 
-    /**
-     * Manipula o LOGIN: Tenta desserializar o objeto completo e retorna a AuthResponse.
-     * @param jsonRequest A string JSON completa da requisição.
-     * @return O JSON de AuthResponse ou o JSON de erro (ResponsePadrao).
-     */
     public String handleLogin(String jsonRequest) {
         try {
             LoginRequest req = GSON.fromJson(jsonRequest, LoginRequest.class);
             String usuarioNome = req.usuario;
             String senha = req.senha;
 
-            // 1. BUSCA O USUÁRIO NO REPOSITÓRIO
+            // Busca o usuario no repositorio
             Usuario usuario = usuarioRepository.findByUsuario(usuarioNome);
 
-            // 2. VALIDAÇÃO DE CREDENCIAIS
+            // Validacao de credenciais
             if (usuario == null || !usuario.getSenha().equals(senha)) {
                 System.out.println("  -> Login falhou: Credenciais inválidas (401).");
-                // 401: Unauthorized: invalid token (usado para credenciais inválidas)
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new LoginResponse(status.getCode(), status.getMessage()));
             }
 
             // Geração do token
             String jwtToken = AUTH.generateToken(usuario.getId(), usuario.getUsuario(), usuario.getFuncao());
             System.out.println("  -> Login BEM-SUCEDIDO: JWT: " + jwtToken.substring(0, 20) + "...");
 
-            // Adiciona sessão
+            // Adiciona sessao
             SessionManager.getInstance().addSession(usuarioNome);
 
             // Usa o construtor de sucesso (status e token)
-            return GSON.toJson(new LoginResponse("200", jwtToken));
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new LoginResponse(status.getCode(), status.getMessage(), jwtToken));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar Login: " + e.getMessage());
-            return GSON.toJson(new LoginResponse("400")); // Bad Request
+            HttpStatus status = HttpStatus.BAD_REQUEST;
+            return GSON.toJson(new LoginResponse(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-     * Manipula o CADASTRO: Tenta desserializar o objeto completo e retorna o status.
-     * @param jsonRequest A string JSON completa da requisição.
-     * @return O JSON de ResponsePadrao (201 ou 4xx).
-     */
+
     public String handleCadastrarUsuario(String jsonRequest) {
         try {
             CadastrarUsuarioRequest req = GSON.fromJson(jsonRequest, CadastrarUsuarioRequest.class);
@@ -81,38 +72,36 @@ public class ServerService {
             String usuario = req.usuario.nome;
             String senha = req.usuario.senha;
 
-            // --- VALIDAÇÃO DE TAMANHO E FORMATO (Requisito) ---
+            // Validacao de tamanho e formato
             if (usuario == null || senha == null ||
                     usuario.length() < 3 || usuario.length() > 20 ||
                     senha.length() < 3 || senha.length() > 20) {
 
-                System.out.println("  -> Cadastro falhou: Dados fora do padrão (422).");
-                return createStatusResponse("422"); // Unprocessable Entity
+                System.out.println("  -> Cadastro falhou: Dados fora do padrão (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // --- VALIDAÇÃO DE UNICIDADE (Lógica de Negócio) ---
+            // Validacao de unicidade
             Usuario novoUsuario = usuarioRepository.addComum(usuario, senha);
 
             if (novoUsuario == null) {
-                // Usuário já existe
                 System.out.println("  -> Cadastro falhou: Usuário '" + usuario + "' já existe (409).");
-                return createStatusResponse("409"); // Already exists
+                HttpStatus status = HttpStatus.CONFLICT;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             System.out.println("  -> Cadastro BEM-SUCEDIDO: ID " + novoUsuario.getId() + ", Usuario: " + novoUsuario.getUsuario());
-            return createStatusResponse("201"); // Created
+            HttpStatus status = HttpStatus.CREATED;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar Cadastro: " + e.getMessage());
-            return createStatusResponse("500"); // Internal Server Error
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-     * Manipula o LOGOUT: Tenta desserializar o objeto completo e retorna o status.
-     * @param jsonRequest A string JSON completa da requisição.
-     * @return O JSON de ResponsePadrao (200 ou 4xx).
-     */
     public String handleLogout(String jsonRequest) {
         try {
             LogoutRequest req = GSON.fromJson(jsonRequest, LogoutRequest.class);
@@ -127,26 +116,24 @@ public class ServerService {
             }
 
             System.out.println("  -> Processando Logout...");
-            return createStatusResponse("200");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro ao desserializar Logout: " + e.getMessage());
-            return createStatusResponse("400");
+            HttpStatus status = HttpStatus.BAD_REQUEST;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-     * Manipula LISTAR_PROPRIO_USUARIO: Valida o token e retorna os dados do usuário.
-     * * @param jsonRequest A string JSON completa da requisição.
-     * @return O JSON de ListarProprioUsuarioResponse ou ResponsePadrao (erro).
-     */
     public String handleListarProprioUsuario(String jsonRequest) {
         try {
             ListarProprioUsuarioRequest req = GSON.fromJson(jsonRequest, ListarProprioUsuarioRequest.class);
 
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> LISTAR_PROPRIO_USUARIO falhou: Token ausente (400).");
-                return createStatusResponse("400"); // Bad Request
+                System.out.println("  -> LISTAR_PROPRIO_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Valida o token
@@ -154,45 +141,46 @@ public class ServerService {
 
             if (decodedJWT == null) {
                 System.out.println("  -> LISTAR_PROPRIO_USUARIO falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401"); // Unauthorized
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Extrai o nome do usuário do token
             String usuario = decodedJWT.getClaim("usuario").asString();
 
             System.out.println("  -> LISTAR_PROPRIO_USUARIO BEM-SUCEDIDO: Usuario: " + usuario);
-            return GSON.toJson(new ListarProprioUsuarioResponse("200", usuario));
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ListarProprioUsuarioResponse(status.getCode(), status.getMessage(), usuario));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar LISTAR_PROPRIO_USUARIO: " + e.getMessage());
-            return createStatusResponse("500"); // Internal Server Error
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-    * Manipula EDITAR_PROPRIO_USUARIO: Valida o token e atualiza a senha do usuário.
-    * @param jsonRequest A string JSON completa da requisição.
-    * @return O JSON de ResponsePadrao.
-    */
     public String handleEditarProprioUsuario(String jsonRequest) {
         try {
             EditarProprioUsuarioRequest req = GSON.fromJson(jsonRequest, EditarProprioUsuarioRequest.class);
 
             // Validação de campos obrigatórios
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Token ausente (400).");
-                return createStatusResponse("400"); // Bad Request
+                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.usuario == null || req.usuario.senha == null || req.usuario.senha.isEmpty()) {
-                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Senha ausente (400).");
-                return createStatusResponse("400"); // Bad Request
+                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Senha ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Validação de formato da senha (3-20 caracteres)
             if (req.usuario.senha.length() < 3 || req.usuario.senha.length() > 20) {
-                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Senha fora do padrão (422).");
-                return createStatusResponse("422"); // Unprocessable Entity
+                System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Senha fora do padrão (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Valida o token
@@ -200,7 +188,8 @@ public class ServerService {
 
             if (decodedJWT == null) {
                 System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401"); // Unauthorized
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Extrai o nome do usuário do token
@@ -211,31 +200,30 @@ public class ServerService {
 
             if (!sucesso) {
                 System.out.println("  -> EDITAR_PROPRIO_USUARIO falhou: Usuário não encontrado (404).");
-                return createStatusResponse("404"); // Not Found (improvável, mas possível)
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             System.out.println("  -> EDITAR_PROPRIO_USUARIO BEM-SUCEDIDO: Usuario '" + nomeUsuario + "' atualizou sua senha.");
-            return createStatusResponse("200"); // Success
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar EDITAR_PROPRIO_USUARIO: " + e.getMessage());
-            return createStatusResponse("500"); // Internal Server Error
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-     * Manipula EXCLUIR_PROPRIO_USUARIO: Valida o token e remove o usuário.
-     * @param jsonRequest A string JSON completa da requisição.
-     * @return O JSON de ResponsePadrao.
-     */
     public String handleExcluirProprioUsuario(String jsonRequest) {
         try {
             ExcluirProprioUsuarioRequest req = GSON.fromJson(jsonRequest, ExcluirProprioUsuarioRequest.class);
 
             // Validação de token obrigatório
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> EXCLUIR_PROPRIO_USUARIO falhou: Token ausente (400).");
-                return createStatusResponse("400"); // Bad Request
+                System.out.println("  -> EXCLUIR_PROPRIO_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Valida o token
@@ -243,7 +231,8 @@ public class ServerService {
 
             if (decodedJWT == null) {
                 System.out.println("  -> EXCLUIR_PROPRIO_USUARIO falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401"); // Unauthorized
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Extrai o nome do usuário do token
@@ -252,7 +241,8 @@ public class ServerService {
             // Previne exclusão do admin
             if ("admin".equals(nomeUsuario)) {
                 System.out.println("  -> EXCLUIR_PROPRIO_USUARIO falhou: Não é possível excluir o administrador (403).");
-                return createStatusResponse("403"); // Forbidden
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Remove o usuário do repositório
@@ -260,31 +250,32 @@ public class ServerService {
 
             if (!sucesso) {
                 System.out.println("  -> EXCLUIR_PROPRIO_USUARIO falhou: Usuário não encontrado (404).");
-                return createStatusResponse("404"); // Not Found
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Remove sessão
             SessionManager.getInstance().removeSession(nomeUsuario);
 
             System.out.println("  -> EXCLUIR_PROPRIO_USUARIO BEM-SUCEDIDO: Usuario '" + nomeUsuario + "' foi excluído.");
-            return createStatusResponse("200"); // Success
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar EXCLUIR_PROPRIO_USUARIO: " + e.getMessage());
-            return createStatusResponse("500"); // Internal Server Error
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
-    /**
-     * Manipula LISTAR_USUARIOS: Apenas admin pode listar todos os usuários.
-     */
     public String handleListarUsuarios(String jsonRequest) {
         try {
             ListarUsuariosRequest req = GSON.fromJson(jsonRequest, ListarUsuariosRequest.class);
 
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> LISTAR_USUARIOS falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> LISTAR_USUARIOS falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // Valida o token
@@ -292,25 +283,29 @@ public class ServerService {
 
             if (decodedJWT == null) {
                 System.out.println("  -> LISTAR_USUARIOS falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Verifica se é admin
+            // Verifica se e admin
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> LISTAR_USUARIOS falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Obtém lista de usuários
+            // Obtem lista de usuários
             List<UsuarioDTO> usuarios = usuarioRepository.getAllUsuarios();
 
             System.out.println("  -> LISTAR_USUARIOS BEM-SUCEDIDO: " + usuarios.size() + " usuário(s) retornado(s).");
-            return GSON.toJson(new ListarUsuariosResponse("200", usuarios));
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ListarUsuariosResponse(status.getCode(), status.getMessage(), usuarios));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar LISTAR_USUARIOS: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
@@ -319,66 +314,77 @@ public class ServerService {
             AdminEditarUsuarioRequest req = GSON.fromJson(jsonRequest, AdminEditarUsuarioRequest.class);
 
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.id == null || req.id.isEmpty()) {
-                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: ID ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: ID ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.usuario == null || req.usuario.senha == null || req.usuario.senha.isEmpty()) {
-                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Senha ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Senha ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
 
             if (decodedJWT == null) {
                 System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             int idUsuario;
             try {
                 idUsuario = Integer.parseInt(req.id);
             } catch (NumberFormatException e) {
-                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: ID inválido (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             // MUDANÇA: extrai ID do claim ao invés do subject
             int idAdmin = decodedJWT.getClaim("id").asInt();
             if (idAdmin == idUsuario) {
                 System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Admin não pode editar a si mesmo por esta operação (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.usuario.senha.length() < 3 || req.usuario.senha.length() > 20) {
-                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Senha fora do padrão (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Senha fora do padrão (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             boolean sucesso = usuarioRepository.updateSenhaById(idUsuario, req.usuario.senha);
 
             if (!sucesso) {
                 System.out.println("  -> ADMIN_EDITAR_USUARIO falhou: Usuário não encontrado (404).");
-                return createStatusResponse("404");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             System.out.println("  -> ADMIN_EDITAR_USUARIO BEM-SUCEDIDO: Senha do usuário ID " + idUsuario + " atualizada.");
-            return createStatusResponse("200");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar ADMIN_EDITAR_USUARIO: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
@@ -387,70 +393,80 @@ public class ServerService {
             AdminExcluirUsuarioRequest req = GSON.fromJson(jsonRequest, AdminExcluirUsuarioRequest.class);
 
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.id == null || req.id.isEmpty()) {
-                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: ID ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: ID ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
 
             if (decodedJWT == null) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             int idUsuario;
             try {
                 idUsuario = Integer.parseInt(req.id);
             } catch (NumberFormatException e) {
-                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: ID inválido (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // MUDANÇA: extrai ID do claim ao invés do subject
             int idAdmin = decodedJWT.getClaim("id").asInt();
             if (idAdmin == idUsuario) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Admin não pode excluir a si mesmo (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (idUsuario == 0) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Não é possível excluir administrador (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             Usuario usuarioExcluir = usuarioRepository.findById(idUsuario);
 
             if (usuarioExcluir == null) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Usuário não encontrado (404).");
-                return createStatusResponse("404");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             boolean sucesso = usuarioRepository.deleteUsuarioById(idUsuario);
 
             if (!sucesso) {
                 System.out.println("  -> ADMIN_EXCLUIR_USUARIO falhou: Erro ao excluir (500).");
-                return createStatusResponse("500");
+                HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             SessionManager.getInstance().removeSession(usuarioExcluir.getUsuario());
 
             System.out.println("  -> ADMIN_EXCLUIR_USUARIO BEM-SUCEDIDO: Usuário ID " + idUsuario + " excluído.");
-            return createStatusResponse("200");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar ADMIN_EXCLUIR_USUARIO: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
@@ -458,77 +474,80 @@ public class ServerService {
         try {
             CriarFilmeRequest req = GSON.fromJson(jsonRequest, CriarFilmeRequest.class);
 
-            // Validações básicas
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> CRIAR_FILME falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> CRIAR_FILME falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.filme == null) {
-                System.out.println("  -> CRIAR_FILME falhou: Dados do filme ausentes (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> CRIAR_FILME falhou: Dados do filme ausentes (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida token
             com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
             if (decodedJWT == null) {
                 System.out.println("  -> CRIAR_FILME falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Verifica se é admin
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> CRIAR_FILME falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Validações de campos obrigatórios
             if (req.filme.titulo == null || req.filme.titulo.trim().isEmpty() ||
                     req.filme.diretor == null || req.filme.diretor.trim().isEmpty() ||
                     req.filme.ano == null || req.filme.ano.trim().isEmpty() ||
                     req.filme.genero == null || req.filme.genero.isEmpty() ||
                     req.filme.sinopse == null || req.filme.sinopse.trim().isEmpty()) {
 
-                System.out.println("  -> CRIAR_FILME falhou: Campos obrigatórios ausentes (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> CRIAR_FILME falhou: Campos obrigatórios ausentes (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Validações de tamanho
             if (req.filme.titulo.length() > 30) {
-                System.out.println("  -> CRIAR_FILME falhou: Título excede 30 caracteres (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> CRIAR_FILME falhou: Título excede 30 caracteres (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.filme.ano.length() != 4) {
-                System.out.println("  -> CRIAR_FILME falhou: Ano deve ter 4 dígitos (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> CRIAR_FILME falhou: Ano deve ter 4 dígitos (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.filme.sinopse.length() > 250) {
-                System.out.println("  -> CRIAR_FILME falhou: Sinopse excede 250 caracteres (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> CRIAR_FILME falhou: Sinopse excede 250 caracteres (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida ano (deve ser número)
             try {
                 int ano = Integer.parseInt(req.filme.ano);
                 if (ano < 1800 || ano > 2100) {
-                    System.out.println("  -> CRIAR_FILME falhou: Ano inválido (422).");
-                    return createStatusResponse("422");
+                    System.out.println("  -> CRIAR_FILME falhou: Ano inválido (405).");
+                    HttpStatus status = HttpStatus.INVALID_FIELDS;
+                    return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
                 }
             } catch (NumberFormatException e) {
-                System.out.println("  -> CRIAR_FILME falhou: Ano deve ser numérico (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> CRIAR_FILME falhou: Ano deve ser numérico (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida gêneros
             if (!GeneroFilme.validateGeneros(req.filme.genero)) {
-                System.out.println("  -> CRIAR_FILME falhou: Gênero(s) inválido(s) (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> CRIAR_FILME falhou: Gênero(s) inválido(s) (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Tenta adicionar filme
             Filme novoFilme = filmeRepository.addFilme(
                     req.filme.titulo,
                     req.filme.diretor,
@@ -539,30 +558,33 @@ public class ServerService {
 
             if (novoFilme == null) {
                 System.out.println("  -> CRIAR_FILME falhou: Filme já existe (409).");
-                return createStatusResponse("409");
+                HttpStatus status = HttpStatus.CONFLICT;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            System.out.println("  -> CRIAR_FILME BEM-SUCEDIDO: ID " + novoFilme.getId() +
-                    ", Título: " + novoFilme.getTitulo());
-            return createStatusResponse("201");
+            System.out.println("  -> CRIAR_FILME BEM-SUCEDIDO: ID " + novoFilme.getId() + ", Título: " + novoFilme.getTitulo());
+            HttpStatus status = HttpStatus.CREATED;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar CRIAR_FILME: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
     public String handleListarFilmes(String jsonRequest) {
         try {
-            // Não precisa de autenticação - qualquer um pode listar
             List<FilmeDTO> filmes = filmeRepository.getAllFilmes();
 
             System.out.println("  -> LISTAR_FILMES BEM-SUCEDIDO: " + filmes.size() + " filme(s) retornado(s).");
-            return GSON.toJson(new ListarFilmesResponse("200", filmes));
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ListarFilmesResponse(status.getCode(), status.getMessage(), filmes));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar LISTAR_FILMES: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
@@ -570,77 +592,78 @@ public class ServerService {
         try {
             EditarFilmeRequest req = GSON.fromJson(jsonRequest, EditarFilmeRequest.class);
 
-            // Validações básicas
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> EDITAR_FILME falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EDITAR_FILME falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.filme == null || req.filme.id == null || req.filme.id.isEmpty()) {
-                System.out.println("  -> EDITAR_FILME falhou: ID do filme ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EDITAR_FILME falhou: ID do filme ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida token
             com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
             if (decodedJWT == null) {
                 System.out.println("  -> EDITAR_FILME falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Verifica se é admin
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> EDITAR_FILME falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Converte ID
             int idFilme;
             try {
                 idFilme = Integer.parseInt(req.filme.id);
             } catch (NumberFormatException e) {
-                System.out.println("  -> EDITAR_FILME falhou: ID inválido (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EDITAR_FILME falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Validações de campos (mesmo que criar)
             if (req.filme.titulo == null || req.filme.titulo.trim().isEmpty() ||
                     req.filme.diretor == null || req.filme.diretor.trim().isEmpty() ||
                     req.filme.ano == null || req.filme.ano.trim().isEmpty() ||
                     req.filme.genero == null || req.filme.genero.isEmpty() ||
                     req.filme.sinopse == null || req.filme.sinopse.trim().isEmpty()) {
 
-                System.out.println("  -> EDITAR_FILME falhou: Campos obrigatórios ausentes (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EDITAR_FILME falhou: Campos obrigatórios ausentes (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Validações de tamanho
             if (req.filme.titulo.length() > 30 || req.filme.ano.length() != 4 ||
                     req.filme.sinopse.length() > 250) {
-                System.out.println("  -> EDITAR_FILME falhou: Dados fora do padrão (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> EDITAR_FILME falhou: Dados fora do padrão (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida ano
             try {
                 int ano = Integer.parseInt(req.filme.ano);
                 if (ano < 1800 || ano > 2100) {
-                    System.out.println("  -> EDITAR_FILME falhou: Ano inválido (422).");
-                    return createStatusResponse("422");
+                    System.out.println("  -> EDITAR_FILME falhou: Ano inválido (405).");
+                    HttpStatus status = HttpStatus.INVALID_FIELDS;
+                    return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
                 }
             } catch (NumberFormatException e) {
-                System.out.println("  -> EDITAR_FILME falhou: Ano deve ser numérico (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> EDITAR_FILME falhou: Ano deve ser numérico (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida gêneros
             if (!GeneroFilme.validateGeneros(req.filme.genero)) {
-                System.out.println("  -> EDITAR_FILME falhou: Gênero(s) inválido(s) (422).");
-                return createStatusResponse("422");
+                System.out.println("  -> EDITAR_FILME falhou: Gênero(s) inválido(s) (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Atualiza filme
             boolean sucesso = filmeRepository.updateFilme(
                     idFilme,
                     req.filme.titulo,
@@ -651,16 +674,19 @@ public class ServerService {
             );
 
             if (!sucesso) {
-                System.out.println("  -> EDITAR_FILME falhou: Filme não encontrado ou conflito (404/409).");
-                return createStatusResponse("404");
+                System.out.println("  -> EDITAR_FILME falhou: Filme não encontrado ou conflito (404).");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             System.out.println("  -> EDITAR_FILME BEM-SUCEDIDO: ID " + idFilme);
-            return createStatusResponse("200");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar EDITAR_FILME: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 
@@ -668,56 +694,57 @@ public class ServerService {
         try {
             ExcluirFilmeRequest req = GSON.fromJson(jsonRequest, ExcluirFilmeRequest.class);
 
-            // Validações básicas
             if (req.token == null || req.token.isEmpty()) {
-                System.out.println("  -> EXCLUIR_FILME falhou: Token ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EXCLUIR_FILME falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
             if (req.id == null || req.id.isEmpty()) {
-                System.out.println("  -> EXCLUIR_FILME falhou: ID ausente (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EXCLUIR_FILME falhou: ID ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Valida token
             com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
             if (decodedJWT == null) {
                 System.out.println("  -> EXCLUIR_FILME falhou: Token inválido ou expirado (401).");
-                return createStatusResponse("401");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Verifica se é admin
             String funcao = decodedJWT.getClaim("funcao").asString();
             if (!"admin".equals(funcao)) {
                 System.out.println("  -> EXCLUIR_FILME falhou: Usuário não é admin (403).");
-                return createStatusResponse("403");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Converte ID
             int idFilme;
             try {
                 idFilme = Integer.parseInt(req.id);
             } catch (NumberFormatException e) {
-                System.out.println("  -> EXCLUIR_FILME falhou: ID inválido (400).");
-                return createStatusResponse("400");
+                System.out.println("  -> EXCLUIR_FILME falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // Remove filme
             boolean sucesso = filmeRepository.deleteFilme(idFilme);
 
             if (!sucesso) {
                 System.out.println("  -> EXCLUIR_FILME falhou: Filme não encontrado (404).");
-                return createStatusResponse("404");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            // TODO: Quando implementar reviews, apagar reviews deste filme aqui
-
             System.out.println("  -> EXCLUIR_FILME BEM-SUCEDIDO: ID " + idFilme);
-            return createStatusResponse("200");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
 
         } catch (Exception e) {
             System.err.println("  -> Erro interno ao processar EXCLUIR_FILME: " + e.getMessage());
-            return createStatusResponse("500");
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
 

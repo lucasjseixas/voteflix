@@ -8,11 +8,15 @@ public class ListarFilmesResponse {
     @SerializedName("status")
     public String status;
 
+    @SerializedName("mensagem")
+    public String mensagem;
+
     @SerializedName("filmes")
     public List<FilmeDTO> filmes;
 
-    public ListarFilmesResponse(String status, List<FilmeDTO> filmes) {
+    public ListarFilmesResponse(String status, String mensagem, List<FilmeDTO> filmes) {
         this.status = status;
+        this.mensagem = mensagem;
         this.filmes = filmes;
     }
 

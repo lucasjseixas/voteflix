@@ -2,43 +2,37 @@ package voteflix.util;
 
 public enum HttpStatus {
     // 2xx - Sucesso
-    OK("200", "Sucesso", "Operação realizada com sucesso."),
-    CREATED("201", "Criado", "Recurso criado com sucesso."),
+    OK("200", "Sucesso: Operacao realizada com sucesso."),
+    CREATED("201", "Sucesso: Recurso cadastrado."),
 
     // 4xx - Erros do cliente
-    BAD_REQUEST("400", "Requisição Inválida", "A requisição contém dados inválidos ou malformados."),
-    UNAUTHORIZED("401", "Não Autorizado", "Credenciais inválidas ou token expirado."),
-    FORBIDDEN("403", "Proibido", "Você não tem permissão para acessar este recurso."),
-    NOT_FOUND("404", "Não Encontrado", "O recurso solicitado não foi encontrado."),
-    CONFLICT("409", "Conflito", "O recurso já existe."),
-    GONE("410", "Removido Permanentemente", "O recurso foi removido e não voltará."),
-    LENGTH_REQUIRED("411", "Tamanho Obrigatório", "A requisição precisa especificar o tamanho do conteúdo."),
-    PAYLOAD_TOO_LARGE("413", "Requisição Muito Grande", "A requisição excede o tamanho permitido."),
-    IM_A_TEAPOT("418", "Sou uma Chaleira", "O servidor se recusa a preparar café."),
-    UNPROCESSABLE_ENTITY("422", "Entidade Não Processável", "Os dados estão fora do padrão esperado."),
-
+    BAD_REQUEST("400", "Erro: Operacao nao encontrada ou invalida"),
+    UNAUTHORIZED("401", "Erro: Token invalido"),
+    FORBIDDEN("403", "Erro: Sem permissao"),
+    NOT_FOUND("404", "Erro: Recurso inexistente"),
+    INVALID_FIELDS("405", "Erro: Campos invalidos, verifique o tipo e quantidade de caracteres"),
+    CONFLICT("409", "Erro: Recurso ja existe"),
+//    GONE("410", "Removido Permanentemente", "O recurso foi removido e não voltará."),
+//    LENGTH_REQUIRED("411", "Tamanho Obrigatório", "A requisição precisa especificar o tamanho do conteúdo."),
+//    PAYLOAD_TOO_LARGE("413", "Requisição Muito Grande", "A requisição excede o tamanho permitido."),
+//    IM_A_TEAPOT("418", "Sou uma Chaleira", "O servidor se recusa a preparar café."),
+    UNPROCESSABLE_ENTITY("422", "Erro: Chaves faltantes ou invalidas"),
     // 5xx - Erros do servidor
-    INTERNAL_SERVER_ERROR("500", "Erro Interno do Servidor", "Ocorreu um erro inesperado no servidor."),
+    INTERNAL_SERVER_ERROR("500", "Erro: Falha interna do servidor");
 
     // Status desconhecido
-    UNKNOWN("000", "Desconhecido", "Status de resposta desconhecido.");
+    //UNKNOWN("000", "Desconhecido", "Status de resposta desconhecido.");
 
     private final String code;
-    private final String title;
     private final String message;
 
-    HttpStatus(String code, String title, String message) {
+    HttpStatus(String code, String message) {
         this.code = code;
-        this.title = title;
         this.message = message;
     }
 
     public String getCode() {
         return code;
-    }
-
-    public String getTitle() {
-        return title;
     }
 
     public String getMessage() {
@@ -52,7 +46,7 @@ public enum HttpStatus {
      */
     public static HttpStatus fromCode(String code) {
         if (code == null) {
-            return UNKNOWN;
+            return INTERNAL_SERVER_ERROR;
         }
 
         for (HttpStatus status : values()) {
@@ -60,7 +54,7 @@ public enum HttpStatus {
                 return status;
             }
         }
-        return UNKNOWN;
+        return INTERNAL_SERVER_ERROR;
     }
 
     /**
@@ -91,12 +85,12 @@ public enum HttpStatus {
      * Retorna mensagem formatada completa
      * @return String formatada com código, título e mensagem
      */
-    public String getFormattedMessage() {
-        return String.format("[%s] %s: %s", code, title, message);
-    }
+//    public String getFormattedMessage() {
+//        return String.format("[%s] %s: %s", code, message);
+//    }
 
     @Override
     public String toString() {
-        return code + " - " + title;
+        return code + " - " + message;
     }
 }

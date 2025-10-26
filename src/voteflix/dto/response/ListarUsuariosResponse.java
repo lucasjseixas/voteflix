@@ -8,11 +8,15 @@ public class ListarUsuariosResponse {
     @SerializedName("status")
     public String status;
 
+    @SerializedName("mensagem")
+    public String mensagem;
+
     @SerializedName("usuarios")
     public List<UsuarioDTO> usuarios;
 
-    public ListarUsuariosResponse(String status, List<UsuarioDTO> usuarios) {
+    public ListarUsuariosResponse(String status, String mensagem , List<UsuarioDTO> usuarios) {
         this.status = status;
+        this.mensagem = mensagem;
         this.usuarios = usuarios;
     }
 

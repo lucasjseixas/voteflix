@@ -29,19 +29,16 @@ public class ClientService {
     private final BufferedReader in;
     private final BufferedReader stdIn;
 
-    // Variáveis de Estado da Sessão
     private String currentToken = null;
     private String currentFuncao = null;
     private String currentUsuario = null;
 
-    // Construtor: Recebe os objetos de I/O criados no main do cliente
     public ClientService(PrintWriter out, BufferedReader in, BufferedReader stdIn) {
         this.out = out;
         this.in = in;
         this.stdIn = stdIn;
     }
 
-    // Getters para a classe do loop principal (para controle de menu)
     public String getCurrentToken() {
         return currentToken;
     }
@@ -50,7 +47,17 @@ public class ClientService {
         return currentFuncao;
     }
 
+    public String createErrorResponse(String statusCode) {
+        HttpStatus status = HttpStatus.fromCode(statusCode);
+        return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+    }
+
     public void handleLogin() throws IOException {
+        if (currentToken != null) {
+            System.out.println("Você já está logado como " + currentUsuario + "!");
+            return;
+        }
+
         System.out.print("Usuário: ");
         String usuario = stdIn.readLine();
         System.out.print("Senha: ");
@@ -68,21 +75,17 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 LoginResponse res = GSON.fromJson(jsonResponse, LoginResponse.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status == HttpStatus.OK && res.token != null) {
-                    // ✅ Apenas armazena o token (opaco)
+                if ("200".equals(res.status) && res.token != null) {
                     currentToken = res.token;
                     currentUsuario = usuario;
-
-                    // ✅ Hardcode simples para contexto acadêmico
                     currentFuncao = usuario.equals("admin") ? "admin" : "user";
 
-                    System.out.println(status.getFormattedMessage());
+                    System.out.println(res.mensagem);
                     System.out.println("Bem-vindo, " + currentUsuario +
                             (currentFuncao.equals("admin") ? " (Administrador)" : ""));
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                     clearSession();
                 }
             } catch (Exception e) {
@@ -116,13 +119,7 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
-
-                if (status == HttpStatus.OK) {
-                    System.out.println(status.getFormattedMessage());
-                } else {
-                    System.err.println(status.getFormattedMessage() + " Removendo token local por segurança.");
-                }
+                System.out.println(res.mensagem);
                 clearSession();
             } catch (Exception e) {
                 System.err.println("Erro ao processar o JSON de resposta do servidor: " + e.getMessage());
@@ -154,11 +151,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+
+                if ("201".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("ERRO: Falha ao processar resposta: " + e.getMessage());
@@ -184,13 +181,12 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ListarProprioUsuarioResponse res = GSON.fromJson(jsonResponse, ListarProprioUsuarioResponse.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status == HttpStatus.OK) {
+                if ("200".equals(res.status)) {
                     System.out.println("\n--- DADOS DO USUÁRIO ---");
                     System.out.println("Usuário: " + res.usuario);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -225,12 +221,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -266,24 +261,14 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                switch (status) {
-                    case OK:
-                        System.out.println(status.getFormattedMessage());
-                        System.out.println("Você foi desconectado.");
-                        clearSession();
-                        break;
-                    case UNAUTHORIZED:
-                    case NOT_FOUND:
-                        System.err.println(status.getFormattedMessage());
-                        clearSession();
-                        break;
-                    case FORBIDDEN:
-                        System.err.println(status.getFormattedMessage());
-                        break;
-                    default:
-                        System.err.println(status.getFormattedMessage());
+                System.out.println(res.mensagem);
+
+                if ("200".equals(res.status)) {
+                    System.out.println("Você foi desconectado.");
+                    clearSession();
+                } else if ("401".equals(res.status) || "404".equals(res.status)) {
+                    clearSession();
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -309,9 +294,8 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ListarUsuariosResponse res = GSON.fromJson(jsonResponse, ListarUsuariosResponse.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status == HttpStatus.OK && res.usuarios != null) {
+                if ("200".equals(res.status) && res.usuarios != null) {
                     System.out.println("\n=== LISTA DE USUÁRIOS ===");
                     for (UsuarioDTO user : res.usuarios) {
                         System.out.println("ID: " + user.id + " | Nome: " + user.nome);
@@ -319,7 +303,7 @@ public class ClientService {
                     System.out.println("Total: " + res.usuarios.size() + " usuário(s)");
                     System.out.println("========================\n");
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -357,12 +341,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -400,12 +383,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.getStatus());
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -428,9 +410,8 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ListarFilmesResponse res = GSON.fromJson(jsonResponse, ListarFilmesResponse.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status == HttpStatus.OK && res.filmes != null) {
+                if ("200".equals(res.status) && res.filmes != null) {
                     if (res.filmes.isEmpty()) {
                         System.out.println("\n>>> Nenhum filme cadastrado ainda.");
                     } else {
@@ -440,10 +421,10 @@ public class ClientService {
 
                         for (FilmeDTO filme : res.filmes) {
                             System.out.println("║");
-                            System.out.println("║ 🎬 " + filme.titulo);
+                            System.out.println("║" + filme.titulo);
                             System.out.println("║    ID: " + filme.id + " | Diretor: " + filme.diretor + " | Ano: " + filme.ano);
                             System.out.println("║    Gêneros: " + String.join(", ", filme.genero));
-                            System.out.println("║    ⭐ Nota: " + filme.nota + " (" + filme.qtdAvaliacoes + " avaliações)");
+                            System.out.println("║    Nota: " + filme.nota + " (" + filme.qtdAvaliacoes + " avaliações)");
                             System.out.println("║    Sinopse: " + filme.sinopse);
                             System.out.println("║");
                             System.out.println("╠═══════════════════════════════════════════════════════════════╣");
@@ -453,7 +434,7 @@ public class ClientService {
                         System.out.println("╚═══════════════════════════════════════════════════════════════╝");
                     }
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -549,12 +530,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("201".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -640,12 +620,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
@@ -663,7 +642,7 @@ public class ClientService {
         System.out.print("ID do filme a excluir: ");
         String id = stdIn.readLine().trim();
 
-        System.out.print("⚠️  ATENÇÃO: Esta ação excluirá o filme e todas as suas avaliações!\nTem certeza? (S/N): ");
+        System.out.print("ATENÇÃO: Esta ação excluirá o filme e todas as suas avaliações!\nTem certeza? (S/N): ");
         String confirmacao = stdIn.readLine().trim();
 
         if (!confirmacao.equalsIgnoreCase("S")) {
@@ -683,12 +662,11 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                HttpStatus status = HttpStatus.fromCode(res.status);
 
-                if (status.isSuccess()) {
-                    System.out.println(status.getFormattedMessage());
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
                 } else {
-                    System.err.println(status.getFormattedMessage());
+                    System.err.println(res.mensagem);
                 }
             } catch (Exception e) {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
