@@ -429,11 +429,9 @@ public class ClientGUI extends JFrame {
                 HttpStatus status = HttpStatus.fromCode(response.status);
 
                 if (status == HttpStatus.OK && response.token != null) {
-                    // ✅ Apenas armazena o token (opaco)
                     currentToken = response.token;
                     currentUsuario = usuario;
 
-                    // ✅ Hardcode simples para contexto acadêmico
                     currentFuncao = usuario.equals("admin") ? "admin" : "user";
 
                     SwingUtilities.invokeLater(() -> {

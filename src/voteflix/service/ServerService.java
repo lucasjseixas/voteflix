@@ -40,8 +40,8 @@ public class ServerService {
 
             // Validacao de credenciais
             if (usuario == null || !usuario.getSenha().equals(senha)) {
-                System.out.println("  -> Login falhou: Credenciais inválidas (401).");
-                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                System.out.println("-> Login falhou: Senha invalida (400).");
+                HttpStatus status = HttpStatus.BAD_REQUEST;
                 return GSON.toJson(new LoginResponse(status.getCode(), status.getMessage()));
             }
 
@@ -62,7 +62,6 @@ public class ServerService {
             return GSON.toJson(new LoginResponse(status.getCode(), status.getMessage()));
         }
     }
-
 
     public String handleCadastrarUsuario(String jsonRequest) {
         try {
