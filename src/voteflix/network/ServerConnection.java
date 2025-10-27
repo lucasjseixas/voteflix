@@ -114,7 +114,7 @@ public class ServerConnection extends Thread {
                 // *** VALIDAÇÃO DO JSON ***
                 if (!JsonValidator.validateComplete(inputLine)) {
                     log("JSON INVÁLIDO - Violação do padrão de nomenclatura");
-                    finalResponse = SERVICE.createStatusResponse("400");
+                    finalResponse = SERVICE.createStatusResponse("405");
 
                     // LOG DO JSON ENVIADO (ERRO)
                     logJsonEnviado(finalResponse, clientIP, clientPort);
@@ -198,8 +198,8 @@ public class ServerConnection extends Thread {
                     statusFinal = res.getStatus();
 
                 } catch (Exception e) {
-                    statusFinal = "400";
-                    log("ERRO de Parsing JSON (Status 400): " + e.getMessage());
+                    statusFinal = "403";
+                    log("ERRO de Parsing JSON (Status 403): " + e.getMessage());
                 }
 
                 // --- 4. LOG DO JSON ENVIADO ---
@@ -219,10 +219,10 @@ public class ServerConnection extends Thread {
 
                 if (isLogoutSucesso || isExcluirSucesso) {
                     if (isLogoutSucesso) {
-                        log("🚪 LOGOUT BEM-SUCEDIDO - Encerrando conexão com " + clientIP);
+                        log("LOGOUT BEM-SUCEDIDO - Encerrando conexão com " + clientIP);
                     }
                     if (isExcluirSucesso) {
-                        log("🗑️ EXCLUSÃO DE CONTA BEM-SUCEDIDA - Encerrando conexão com " + clientIP);
+                        log("EXCLUSÃO DE CONTA BEM-SUCEDIDA - Encerrando conexão com " + clientIP);
                     }
                     break;
                 }

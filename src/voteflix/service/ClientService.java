@@ -47,10 +47,10 @@ public class ClientService {
         return currentFuncao;
     }
 
-    public String createErrorResponse(String statusCode) {
-        HttpStatus status = HttpStatus.fromCode(statusCode);
-        return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
-    }
+//    public String createErrorResponse(String statusCode) {
+//        HttpStatus status = HttpStatus.fromCode(statusCode);
+//        return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+//    }
 
     public void handleLogin() throws IOException {
         if (currentToken != null) {
@@ -81,7 +81,7 @@ public class ClientService {
                     currentUsuario = usuario;
                     currentFuncao = usuario.equals("admin") ? "admin" : "user";
 
-                    System.out.println(res.mensagem);
+                    System.out.println("\n");
                     System.out.println("Bem-vindo, " + currentUsuario +
                             (currentFuncao.equals("admin") ? " (Administrador)" : ""));
                 } else {
@@ -103,7 +103,7 @@ public class ClientService {
 
     public void handleLogout() throws IOException {
         if (currentToken == null) {
-            System.out.println("Você já está deslogado.");
+            System.out.println("Você ja esta deslogado.");
             return;
         }
 
@@ -119,7 +119,7 @@ public class ClientService {
         if (jsonResponse != null) {
             try {
                 ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
-                System.out.println(res.mensagem);
+
                 clearSession();
             } catch (Exception e) {
                 System.err.println("Erro ao processar o JSON de resposta do servidor: " + e.getMessage());
@@ -239,7 +239,7 @@ public class ClientService {
             return;
         }
 
-        System.out.println("\n⚠️  ATENÇÃO: EXCLUSÃO DE CONTA ⚠️");
+        System.out.println("\nATENÇÃO: EXCLUSÃO DE CONTA");
         System.out.println("Esta ação é IRREVERSÍVEL e irá excluir sua conta permanentemente.");
         System.out.print("Tem certeza que deseja continuar? (S/N): ");
         String confirmacao = stdIn.readLine();

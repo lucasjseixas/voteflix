@@ -194,7 +194,7 @@ public class ClientGUI extends JFrame {
 
         logArea = new JTextArea();
         logArea.setEditable(false);
-        logArea.setFont(new Font("Consolas", Font.PLAIN, 12));
+        logArea.setFont(new Font("Consolas", Font.PLAIN, 10));
         logArea.setBackground(new Color(30, 30, 30));
         logArea.setForeground(new Color(200, 200, 200));
         logArea.setLineWrap(true);
