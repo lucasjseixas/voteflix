@@ -7,7 +7,7 @@ public enum HttpStatus {
 
     // 4xx - Erros do cliente
     BAD_REQUEST("400", "Erro: Operacao nao encontrada ou invalida"),
-    UNAUTHORIZED("401", "Erro: Token invalido"),
+    UNAUTHORIZED("401", "Erro: Senha / usuario ou token invalido -> Nao tem consenso no protocolo"),
     FORBIDDEN("403", "Erro: Sem permissao"),
     NOT_FOUND("404", "Erro: Recurso inexistente"),
     INVALID_FIELDS("405", "Erro: Campos invalidos, verifique o tipo e quantidade de caracteres"),

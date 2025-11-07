@@ -500,22 +500,21 @@ public class ServerService {
             if (req.filme.titulo == null || req.filme.titulo.trim().isEmpty() ||
                     req.filme.diretor == null || req.filme.diretor.trim().isEmpty() ||
                     req.filme.ano == null || req.filme.ano.trim().isEmpty() ||
-                    req.filme.genero == null || req.filme.genero.isEmpty() ||
-                    req.filme.sinopse == null || req.filme.sinopse.trim().isEmpty()) {
+                    req.filme.genero == null || req.filme.genero.isEmpty()) {
 
                 System.out.println("-> CRIAR_FILME falhou: Campos obrigatórios ausentes (422).");
                 HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            if (req.filme.titulo.length() > 30) {
+            if (req.filme.titulo.length() < 3 || req.filme.titulo.length() > 30) {
                 System.out.println("-> CRIAR_FILME falhou: Título excede 30 caracteres (405).");
                 HttpStatus status = HttpStatus.INVALID_FIELDS;
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
-            if (req.filme.ano.length() != 4) {
-                System.out.println("-> CRIAR_FILME falhou: Ano deve ter 4 dígitos (405).");
+            if (req.filme.ano.length() < 3 || req.filme.ano.length() > 4) {
+                System.out.println("-> CRIAR_FILME falhou: Ano deve ter valores entre 3 e 4 dígitos (405).");
                 HttpStatus status = HttpStatus.INVALID_FIELDS;
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
@@ -526,6 +525,7 @@ public class ServerService {
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
+/*          Valores entre 1800 e 2100 removidos
             try {
                 int ano = Integer.parseInt(req.filme.ano);
                 if (ano < 1800 || ano > 2100) {
@@ -538,6 +538,7 @@ public class ServerService {
                 HttpStatus status = HttpStatus.INVALID_FIELDS;
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
+*/
 
             if (!GeneroFilme.validateGeneros(req.filme.genero)) {
                 System.out.println("-> CRIAR_FILME falhou: Gênero(s) inválido(s) (405).");

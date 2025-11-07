@@ -45,6 +45,8 @@ public class ClientConnection {
         boolean running = true;
         while (running) {
             displayMenu(service.getCurrentToken(), service.getCurrentFuncao());
+            //getCurrentFuncao não está vindo pelo JWT do servidor, simplesmente é uma verificação na hora do login
+            //se a reposta for 200 e o token for != de null, e o usuario for == admin, ele seta a funcao para 'admin', senao, seta para 'user'
             System.out.print("Digite a opcao: ");
             choice = stdIn.readLine();
 
@@ -66,7 +68,7 @@ public class ClientConnection {
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
                 }
-            } else if ("admin".equals(service.getCurrentFuncao())) {
+            } else if("admin".equals(service.getCurrentFuncao())) {
                 // ADMIN LOGADO
                 switch (choice) {
                     case "1":

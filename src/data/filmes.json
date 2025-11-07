@@ -13,18 +13,6 @@
     "qtd_avaliacoes": "77"
   },
   {
-    "id": "1",
-    "titulo": "Dont Make Waves",
-    "diretor": "Jessey Ramiro",
-    "ano": "2001",
-    "genero": [
-      "Comedia"
-    ],
-    "sinopse": "ultrices mattis odio donec vitae nisi nam ultrices libero non mattis pulvinar nulla pede ullamcorper augue a",
-    "nota": "9.1",
-    "qtd_avaliacoes": "18"
-  },
-  {
     "id": "2",
     "titulo": "Postman Blues",
     "diretor": "Dione Van Hault",
@@ -38,5 +26,17 @@
     "sinopse": "lacus at velit vivamus vel nulla eget eros elementum pellentesque quisque porta volutpat erat quisque erat",
     "nota": "8.3",
     "qtd_avaliacoes": "79"
+  },
+  {
+    "id": "1",
+    "titulo": "Dont Make Waves",
+    "diretor": "Jessey Ramiro",
+    "ano": "2001",
+    "genero": [
+      "Comedia"
+    ],
+    "sinopse": "ultrices mattis odio donec vitae nisi nam ultrices libero non mattis pulvinar nulla pede ullamcorper augue a",
+    "nota": "9.1",
+    "qtd_avaliacoes": "18"
   }
 ]

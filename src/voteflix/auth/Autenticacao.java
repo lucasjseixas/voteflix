@@ -9,6 +9,13 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 import java.util.Date;
 
+/**
+ * TODO: Ver por que mesmo logado com admin e enviando vazio
+ * olhar as categorias, como está sendo passado pelo array de categorias
+ * na criacao de filmes
+ *
+ */
+
 public class Autenticacao {
 
     private static final String SECRET_KEY = "JWT_SECRET_KEY";
@@ -21,6 +28,7 @@ public class Autenticacao {
                     //.withSubject(String.valueOf(id)) // checar se utilizaremos o withSubject ou um claim
                     .withClaim("id", id)
                     .withClaim("usuario", usuario)
+                    //.withClaim("role", funcao)
                     .withClaim("funcao", funcao)
                     .withIssuedAt(new Date())
                     .withExpiresAt(new Date(System.currentTimeMillis() + 3600000)) // 1 hour expiration

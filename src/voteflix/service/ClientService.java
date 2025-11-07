@@ -7,7 +7,7 @@ import voteflix.dto.response.ListarProprioUsuarioResponse;
 import voteflix.dto.response.ListarUsuariosResponse;
 import voteflix.dto.response.LoginResponse;
 import voteflix.dto.response.ResponsePadrao;
-import voteflix.util.HttpStatus;
+
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -500,23 +500,28 @@ public class ClientService {
         System.out.print("Sinopse (max 250 caracteres): ");
         String sinopse = stdIn.readLine().trim();
 
-        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || sinopse.isEmpty()) {
-            System.err.println("Erro: Todos os campos são obrigatórios.");
+        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty()) {
+            System.err.println("Erro: Os campos titulo, diretor e ano sao obrigatorios");
             return;
         }
 
-        if (titulo.length() > 30) {
-            System.err.println("Erro: Título não pode exceder 30 caracteres.");
+        if (titulo.length() < 3 || titulo.length() > 30) {
+            System.err.println("Erro: Titulo não pode ser menor que 3 e maior que 30 caracteres.");
             return;
         }
 
-        if (ano.length() != 4) {
-            System.err.println("Erro: Ano deve ter exatamente 4 dígitos.");
+        if (diretor.length() < 3 || diretor.length() > 30) {
+            System.err.println("Erro: Diretor não pode ser menor que 3 e maior que 30 caracteres.");
+            return;
+        }
+
+        if (ano.length() < 3 || ano.length() > 4) {
+            System.err.println("Erro: O Ano deve possuir 3 algarismos.");
             return;
         }
 
         if (sinopse.length() > 250) {
-            System.err.println("Erro: Sinopse não pode exceder 250 caracteres.");
+            System.err.println("Erro: Sinopse não pode exceder 250 caracteres. Mas pode ser vazia");
             return;
         }
 
@@ -548,12 +553,47 @@ public class ClientService {
     }
 
     public void handleEditarFilme() throws IOException {
+
+        //Para editar os filmes eu terei que relistar os filmes para obter os dados do servidor, senao nao tem como implementar esse tipo de operação
         if (currentToken == null) {
             System.out.println("Você precisa estar logado como admin para executar esta operação.");
             return;
         }
 
-        System.out.println("\n--- EDITAR FILME ---");
+        // ===== 1. LISTAR FILMES =====
+        ListarFilmesRequest reqListar = new ListarFilmesRequest(currentToken);
+        out.println(GSON.toJson(reqListar));
+        String jsonResponseListar = in.readLine();
+
+        ListarFilmesResponse resListar = GSON.fromJson(jsonResponseListar, ListarFilmesResponse.class);
+
+        if (!"200".equals(resListar.status) || resListar.filmes == null || resListar.filmes.isEmpty()) {
+            System.err.println("Nenhum filme disponível.");
+            return;
+        }
+
+        // ===== 2. ESCOLHER FILME =====
+        System.out.println("\n=== FILMES ===");
+        for (int i = 0; i < resListar.filmes.size(); i++) {
+            FilmeDTO f = resListar.filmes.get(i);
+            System.out.println((i + 1) + ". [ID: " + f.id + "] " + f.titulo);
+        }
+
+        System.out.print("\nEscolha o filme: ");
+        int escolha = Integer.parseInt(stdIn.readLine()) - 1;
+
+        if (escolha < 0 || escolha >= resListar.filmes.size()) {
+            System.err.println("Opção inválida.");
+            return;
+        }
+
+        // ===== 3. GUARDAR DADOS ORIGINAIS =====
+        FilmeDTO original = resListar.filmes.get(escolha);
+
+        System.out.println("\n=== EDITANDO: " + original.titulo + " ===");
+        System.out.println("(Deixe em branco para manter o valor atual)\n");
+
+        //System.out.println("\n--- EDITAR FILME ---");
 
         System.out.print("ID do filme a editar: ");
         String id = stdIn.readLine().trim();
@@ -600,12 +640,12 @@ public class ClientService {
         System.out.print("Nova Sinopse (max 250): ");
         String sinopse = stdIn.readLine().trim();
 
-        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || generos.isEmpty() || sinopse.isEmpty()) {
-            System.err.println("Erro: Todos os campos são obrigatórios.");
+        if (titulo.isEmpty() || diretor.isEmpty() || ano.isEmpty() || generos.isEmpty()) {
+            System.err.println("Erro: Os campos Titulo, Diretor e Ano são obrigatorios.");
             return;
         }
 
-        if (titulo.length() > 30 || ano.length() != 4 || sinopse.length() > 250) {
+        if (titulo.length() < 3 || titulo.length() > 30 || ano.length() < 3 || ano.length() > 4 || sinopse.length() > 250) {
             System.err.println("Erro: Verifique os limites de caracteres.");
             return;
         }
