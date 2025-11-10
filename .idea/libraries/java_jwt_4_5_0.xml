@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="java-jwt-4.5.0">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/bibiotecas/java-jwt-4.5.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

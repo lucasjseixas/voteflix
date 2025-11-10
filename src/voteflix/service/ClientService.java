@@ -551,7 +551,7 @@ public class ClientService {
             }
         }
     }
-
+/*
     public void handleEditarFilme() throws IOException {
 
         //Para editar os filmes eu terei que relistar os filmes para obter os dados do servidor, senao nao tem como implementar esse tipo de operação
@@ -675,6 +675,120 @@ public class ClientService {
                 System.err.println("Erro ao processar resposta: " + e.getMessage());
             }
         }
+    }
+*/
+
+    public void handleEditarFilme() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado como admin.");
+            return;
+        }
+
+        // ===== 1. LISTAR FILMES =====
+        ListarFilmesRequest reqListar = new ListarFilmesRequest(currentToken);
+        out.println(GSON.toJson(reqListar));
+        String jsonResponseListar = in.readLine();
+
+        ListarFilmesResponse resListar = GSON.fromJson(jsonResponseListar, ListarFilmesResponse.class);
+
+        if (!"200".equals(resListar.status) || resListar.filmes == null || resListar.filmes.isEmpty()) {
+            System.err.println("Nenhum filme disponível.");
+            return;
+        }
+
+        // ===== 2. ESCOLHER FILME =====
+        System.out.println("\n=== FILMES ===");
+        for (int i = 0; i < resListar.filmes.size(); i++) {
+            FilmeDTO f = resListar.filmes.get(i);
+            System.out.println((i + 1) + ". [ID: " + f.id + "] " + f.titulo);
+        }
+
+        System.out.print("\nEscolha o filme: ");
+        int escolha = Integer.parseInt(stdIn.readLine()) - 1;
+
+        if (escolha < 0 || escolha >= resListar.filmes.size()) {
+            System.err.println("Opção inválida.");
+            return;
+        }
+
+        // ===== 3. GUARDAR DADOS ORIGINAIS =====
+        FilmeDTO original = resListar.filmes.get(escolha);
+
+        System.out.println("\n=== EDITANDO: " + original.titulo + " ===");
+        System.out.println("(Deixe em branco para manter o valor atual)\n");
+
+        // ===== 4. COLETAR NOVOS DADOS (vazio = manter) =====
+        System.out.print("Título [" + original.titulo + "]: ");
+        String titulo = stdIn.readLine().trim();
+        if (titulo.isEmpty()) titulo = original.titulo;
+
+        System.out.print("Diretor [" + original.diretor + "]: ");
+        String diretor = stdIn.readLine().trim();
+        if (diretor.isEmpty()) diretor = original.diretor;
+
+        System.out.print("Ano [" + original.ano + "]: ");
+        String ano = stdIn.readLine().trim();
+        if (ano.isEmpty()) ano = original.ano;
+
+        System.out.print("Sinopse [mantém atual]: ");
+        String sinopse = stdIn.readLine().trim();
+        if (sinopse.isEmpty()) sinopse = original.sinopse;
+
+        // ===== 5. GÊNEROS =====
+        System.out.println("\nGêneros atuais: " + String.join(", ", original.genero));
+        System.out.println("1.Ação 2.Aventura 3.Comédia 4.Drama 5.Fantasia 6.Ficção Científica");
+        System.out.println("7.Terror 8.Romance 9.Documentário 10.Musical 11.Animação");
+
+        System.out.print("Novos gêneros (ex: 1,6) [vazio=manter]: ");
+        String generosInput = stdIn.readLine().trim();
+
+        List<String> generos = original.genero; // Default: mantém
+
+        if (!generosInput.isEmpty()) {
+            String[] generosDisponiveis = {
+                    "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
+                    "Ficção Científica", "Terror", "Romance", "Documentário", "Musical", "Animação"
+            };
+
+            generos = new ArrayList<>();
+            for (String idx : generosInput.split(",")) {
+                try {
+                    int i = Integer.parseInt(idx.trim()) - 1;
+                    if (i >= 0 && i < generosDisponiveis.length) {
+                        generos.add(generosDisponiveis[i]);
+                    }
+                } catch (NumberFormatException e) {
+                    // Ignora entrada inválida
+                }
+            }
+
+            if (generos.isEmpty()) {
+                generos = original.genero; // Se entrada inválida, mantém
+                System.out.println("Entrada inválida. Mantendo gêneros atuais.");
+            }
+        }
+
+        // ===== 6. VALIDAR =====
+        if (titulo.length() < 3 || titulo.length() > 30 || diretor.length() < 3 || diretor.length() > 30 ||  ano.length() < 3 || ano.length() > 4 || sinopse.length() > 250) {
+            System.err.println("Erro: Verifique os limites de caracteres.");
+            return;
+        }
+
+        // ===== 7. ENVIAR =====
+        EditarFilmeRequest.FilmeUpdate filmeUpdate = new EditarFilmeRequest.FilmeUpdate(
+                original.id, titulo, diretor, ano, generos, sinopse
+        );
+        EditarFilmeRequest req = new EditarFilmeRequest(filmeUpdate, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+//        ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+//        System.out.println("200".equals(res.status) ? "✅ " + res.mensagem : "❌ " + res.mensagem);
     }
 
     public void handleExcluirFilme() throws IOException {

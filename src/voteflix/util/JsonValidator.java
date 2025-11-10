@@ -38,15 +38,15 @@ public class JsonValidator {
             // Validação dos valores String
             JsonElement value = jsonObject.get(key);
 
-            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
-                String strValue = value.getAsString();
-                // Regex: apenas letras (maiúsculas/minúsculas), números, underscore e alguns caracteres especiais comuns
-                // Permite: a-z, A-Z, 0-9, underscore, ponto, hífen
-                if (!strValue.matches("^[a-zA-Z0-9_.\\-]*$")) {
-                    System.err.println("Valor inválido no campo '" + key + "': '" + strValue + "' (contém acentuação ou caracteres especiais não permitidos)");
-                    return false;
-                }
-            }
+//            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+//                String strValue = value.getAsString();
+//                // Regex: apenas letras (maiúsculas/minúsculas), números, underscore e alguns caracteres especiais comuns
+//                // Permite: a-z, A-Z, 0-9, underscore, ponto, hífen
+//                if (!strValue.matches("^[a-zA-Z0-9_.\\-]*$")) {
+//                    System.err.println("Valor inválido no campo '" + key + "': '" + strValue + "' (contém acentuação ou caracteres especiais não permitidos)");
+//                    return false;
+//                }
+//            }
 
             // Validação recursiva para objetos aninhados
             if (value.isJsonObject() && !validateJsonObjectKeys(value.getAsJsonObject())) {
