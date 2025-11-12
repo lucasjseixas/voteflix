@@ -192,6 +192,12 @@ public class ServerService {
             // Extrai o nome do usuário do token
             String nomeUsuario = decodedJWT.getClaim("usuario").asString();
 
+            if("admin".equals(nomeUsuario)) {
+                System.out.println("-> EDITAR_PROPRIO_USUARIO falhou: Usuário admin não pode alterar sua senha (403).");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
             // Atualiza a senha no repositório
             boolean sucesso = usuarioRepository.updateSenha(nomeUsuario, req.usuario.senha);
 

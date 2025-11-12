@@ -44,7 +44,7 @@ public class ClientConnection {
 
         boolean running = true;
         while (running) {
-            displayMenu(service.getCurrentToken(), service.getCurrentFuncao());
+            displayMenu(service.getCurrentToken());
             //getCurrentFuncao não está vindo pelo JWT do servidor, simplesmente é uma verificação na hora do login
             //se a reposta for 200 e o token for != de null, e o usuario for == admin, ele seta a funcao para 'admin', senao, seta para 'user'
             System.out.print("Digite a opcao: ");
@@ -68,8 +68,8 @@ public class ClientConnection {
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
                 }
-            } else if("admin".equals(service.getCurrentFuncao())) {
-                // ADMIN LOGADO
+            } else  {
+                // ADMIN LOGADO --> Qualquer usuário logado --> mudanca dia 12/11
                 switch (choice) {
                     case "1":
                         service.handleListarUsuarios();
@@ -99,29 +99,23 @@ public class ClientConnection {
                             running = false;
                         }
                         break;
-                    default:
-                        System.out.println("Opcao invalida. Tente novamente.");
-                }
-            } else {
-                // USUÁRIO COMUM LOGADO
-                switch (choice) {
-                    case "1":
+                    case "9":
                         service.handleListarProprioUsuario();
                         break;
-                    case "2":
+                    case "10":
                         service.handleEditarProprioUsuario();
                         break;
-                    case "3":
+                    case "11":
                         service.handleExcluirProprioUsuario();
                         if (service.getCurrentToken() == null) {
                             System.out.println("\n>>> Conta excluída. Encerrando...");
                             running = false;
                         }
                         break;
-                    case "4":
+                    case "12":
                         service.handleVerFilmes();
                         break;
-                    case "5":
+                    case "13":
                         service.handleLogout();
                         if (service.getCurrentToken() == null) {
                             System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
@@ -131,6 +125,35 @@ public class ClientConnection {
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
                 }
+//            } else {
+//                // USUÁRIO COMUM LOGADO
+//                switch (choice) {
+//                    case "1":
+//                        service.handleListarProprioUsuario();
+//                        break;
+//                    case "2":
+//                        service.handleEditarProprioUsuario();
+//                        break;
+//                    case "3":
+//                        service.handleExcluirProprioUsuario();
+//                        if (service.getCurrentToken() == null) {
+//                            System.out.println("\n>>> Conta excluída. Encerrando...");
+//                            running = false;
+//                        }
+//                        break;
+//                    case "4":
+//                        service.handleVerFilmes();
+//                        break;
+//                    case "5":
+//                        service.handleLogout();
+//                        if (service.getCurrentToken() == null) {
+//                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
+//                            running = false;
+//                        }
+//                        break;
+//                    default:
+//                        System.out.println("Opcao invalida. Tente novamente.");
+//                }
             }
         }
 
@@ -140,15 +163,15 @@ public class ClientConnection {
         echoSocket.close();
     }
 
-    private static void displayMenu(String token, String funcao) {
+    private static void displayMenu(String token) {
         if (token == null) {
             System.out.println("\n--- MENU PRINCIPAL (DESLOGADO) ---");
             System.out.println("1. Login");
             System.out.println("2. Cadastrar Novo Usuario");
             System.out.println("3. Ver Catálogo de Filmes");
             System.out.println("4. Desconectar");
-        } else if ("admin".equals(funcao)) {
-            System.out.println("\n--- MENU ADMIN ---");
+        } else {
+            System.out.println("\n--- MENU ---");
             System.out.println("== Operações Administrativas ==");
             System.out.println("1. Listar Todos os Usuários");
             System.out.println("2. Editar Usuário (por ID)");
@@ -161,13 +184,18 @@ public class ClientConnection {
             System.out.println("7. Excluir Filme");
             System.out.println("");
             System.out.println("8. Logout");
-        } else {
-            System.out.println("\n--- MENU USUÁRIO (LOGADO)---");
-            System.out.println("1. Listar Meus Dados");
-            System.out.println("2. Atualizar Senha");
-            System.out.println("3. Excluir Conta");
-            System.out.println("4. Ver Catálogo de Filmes");
-            System.out.println("5. Logout");
+            System.out.println("9. Listar Meus Dados");
+            System.out.println("10. Atualizar Senha");
+            System.out.println("11. Excluir Conta");
+            System.out.println("12. Ver Catálogo de Filmes");
         }
+//        } else {
+//            System.out.println("\n--- MENU USUÁRIO (LOGADO)---");
+//            System.out.println("1. Listar Meus Dados");
+//            System.out.println("2. Atualizar Senha");
+//            System.out.println("3. Excluir Conta");
+//            System.out.println("4. Ver Catálogo de Filmes");
+//            System.out.println("5. Logout");
+//        }
     }
 }
