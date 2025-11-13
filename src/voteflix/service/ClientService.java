@@ -7,6 +7,14 @@ import voteflix.dto.response.ListarProprioUsuarioResponse;
 import voteflix.dto.response.ListarUsuariosResponse;
 import voteflix.dto.response.LoginResponse;
 import voteflix.dto.response.ResponsePadrao;
+import voteflix.dto.ReviewDTO;
+import voteflix.dto.request.CriarReviewRequest;
+import voteflix.dto.request.EditarReviewRequest;
+import voteflix.dto.request.ExcluirReviewRequest;
+import voteflix.dto.request.ListarReviewsUsuarioRequest;
+import voteflix.dto.request.BuscarFilmeIdRequest;
+import voteflix.dto.response.ListarReviewsUsuarioResponse;
+import voteflix.dto.response.BuscarFilmeIdResponse;
 
 
 import java.io.BufferedReader;
@@ -551,6 +559,7 @@ public class ClientService {
             }
         }
     }
+
 /*
     public void handleEditarFilme() throws IOException {
 
@@ -832,4 +841,319 @@ public class ClientService {
             }
         }
     }
+
+    /**
+     * Cria uma nova review para um filme.
+     */
+    public void handleCriarReview() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- CRIAR REVIEW ---");
+        System.out.print("ID do filme: ");
+        String idFilme = stdIn.readLine().trim();
+
+        System.out.print("Nota (1-5): ");
+        String nota = stdIn.readLine().trim();
+
+        System.out.print("Título da review: ");
+        String titulo = stdIn.readLine().trim();
+
+        System.out.print("Descrição (max 250 caracteres, opcional): ");
+        String descricao = stdIn.readLine().trim();
+
+        if (idFilme.isEmpty() || nota.isEmpty() || titulo.isEmpty()) {
+            System.err.println("Erro: ID do filme, nota e título são obrigatórios.");
+            return;
+        }
+
+        try {
+            int notaInt = Integer.parseInt(nota);
+            if (notaInt < 1 || notaInt > 5) {
+                System.err.println("Erro: A nota deve estar entre 1 e 5.");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Erro: A nota deve ser um número inteiro.");
+            return;
+        }
+
+        if (descricao.length() > 250) {
+            System.err.println("Erro: A descrição não pode exceder 250 caracteres.");
+            return;
+        }
+
+        CriarReviewRequest.ReviewData reviewData = new CriarReviewRequest.ReviewData(
+                idFilme, titulo, descricao, nota
+        );
+        CriarReviewRequest req = new CriarReviewRequest(reviewData, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+
+                if ("201".equals(res.status)) {
+                    System.out.println(res.mensagem);
+                } else {
+                    System.err.println(res.mensagem);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Lista todas as reviews do usuário logado.
+     */
+    public void handleListarMinhasReviews() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
+        ListarReviewsUsuarioRequest req = new ListarReviewsUsuarioRequest(currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ListarReviewsUsuarioResponse res = GSON.fromJson(jsonResponse, ListarReviewsUsuarioResponse.class);
+
+                if ("200".equals(res.status) && res.reviews != null) {
+                    if (res.reviews.isEmpty()) {
+                        System.out.println("\n>>> Você ainda não criou nenhuma review.");
+                    } else {
+                        System.out.println("\n╔═══════════════════════════════════════════════════════════════╗");
+                        System.out.println("║                    MINHAS REVIEWS                              ║");
+                        System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+
+                        for (ReviewDTO review : res.reviews) {
+                            System.out.println("║");
+                            System.out.println("║ ID: " + review.id + " | Filme ID: " + review.idFilme + " | Nota: " + review.nota + "/5");
+                            System.out.println("║ Título: " + review.titulo);
+                            System.out.println("║ Descrição: " + (review.descricao.isEmpty() ? "(sem descrição)" : review.descricao));
+                            System.out.println("║");
+                            System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+                        }
+
+                        System.out.println("║ Total: " + res.reviews.size() + " review(s)");
+                        System.out.println("╚═══════════════════════════════════════════════════════════════╝");
+                    }
+                } else {
+                    System.err.println(res.mensagem);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Busca um filme por ID e exibe suas reviews.
+     */
+    public void handleBuscarFilmeComReviews() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- BUSCAR FILME E REVIEWS ---");
+        System.out.print("Digite o ID do filme: ");
+        String idFilme = stdIn.readLine().trim();
+
+        if (idFilme.isEmpty()) {
+            System.err.println("Erro: ID do filme é obrigatório.");
+            return;
+        }
+
+        BuscarFilmeIdRequest req = new BuscarFilmeIdRequest(idFilme, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                BuscarFilmeIdResponse res = GSON.fromJson(jsonResponse, BuscarFilmeIdResponse.class);
+
+                if ("200".equals(res.status) && res.filme != null) {
+                    FilmeDTO filme = res.filme;
+
+                    System.out.println("\n╔═══════════════════════════════════════════════════════════════╗");
+                    System.out.println("║                    DETALHES DO FILME                           ║");
+                    System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+                    System.out.println("║ ID: " + filme.id);
+                    System.out.println("║ Título: " + filme.titulo);
+                    System.out.println("║ Diretor: " + filme.diretor + " | Ano: " + filme.ano);
+                    System.out.println("║ Gêneros: " + String.join(", ", filme.genero));
+                    System.out.println("║ Nota: " + filme.nota + " (" + filme.qtdAvaliacoes + " avaliações)");
+                    System.out.println("║ Sinopse: " + filme.sinopse);
+                    System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+                    System.out.println("║                         REVIEWS                                ║");
+                    System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+
+                    if (res.reviews == null || res.reviews.isEmpty()) {
+                        System.out.println("║ Nenhuma review ainda.");
+                    } else {
+                        for (ReviewDTO review : res.reviews) {
+                            System.out.println("║");
+                            System.out.println("║ Usuario: " + review.nomeUsuario + " | Nota: " + review.nota + "/5");
+                            System.out.println("║ Título: " + review.titulo);
+                            if (!review.descricao.isEmpty()) {
+                                System.out.println("║ Descrição: " + review.descricao);
+                            }
+                            System.out.println("║");
+                            System.out.println("╠═══════════════════════════════════════════════════════════════╣");
+                        }
+                        System.out.println("║ Total: " + res.reviews.size() + " review(s)");
+                    }
+
+                    System.out.println("╚═══════════════════════════════════════════════════════════════╝");
+                } else {
+                    System.err.println(res.mensagem);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Edita uma review existente do usuário.
+     */
+    public void handleEditarReview() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- EDITAR REVIEW ---");
+        System.out.print("ID da review a editar: ");
+        String id = stdIn.readLine().trim();
+
+        System.out.print("Nova nota (1-5): ");
+        String nota = stdIn.readLine().trim();
+
+        System.out.print("Novo título: ");
+        String titulo = stdIn.readLine().trim();
+
+        System.out.print("Nova descrição (max 250 caracteres): ");
+        String descricao = stdIn.readLine().trim();
+
+        if (id.isEmpty() || nota.isEmpty() || titulo.isEmpty()) {
+            System.err.println("Erro: ID, nota e título são obrigatórios.");
+            return;
+        }
+
+        try {
+            int notaInt = Integer.parseInt(nota);
+            if (notaInt < 1 || notaInt > 5) {
+                System.err.println("Erro: A nota deve estar entre 1 e 5.");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Erro: A nota deve ser um número inteiro.");
+            return;
+        }
+
+        if (descricao.length() > 250) {
+            System.err.println("Erro: A descrição não pode exceder 250 caracteres.");
+            return;
+        }
+
+        EditarReviewRequest.ReviewUpdate reviewUpdate = new EditarReviewRequest.ReviewUpdate(
+                id, titulo, descricao, nota
+        );
+        EditarReviewRequest req = new EditarReviewRequest(reviewUpdate, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
+                } else {
+                    System.err.println(res.mensagem);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Exclui uma review do usuário.
+     */
+    public void handleExcluirReview() throws IOException {
+        if (currentToken == null) {
+            System.out.println("Você precisa estar logado para executar esta operação.");
+            return;
+        }
+
+        System.out.println("\n--- EXCLUIR REVIEW ---");
+        System.out.print("ID da review a excluir: ");
+        String id = stdIn.readLine().trim();
+
+        if (id.isEmpty()) {
+            System.err.println("Erro: ID da review é obrigatório.");
+            return;
+        }
+
+        System.out.print("Tem certeza que deseja excluir esta review? (S/N): ");
+        String confirmacao = stdIn.readLine();
+
+        if (!confirmacao.equalsIgnoreCase("S")) {
+            System.out.println("Operação cancelada.");
+            return;
+        }
+
+        ExcluirReviewRequest req = new ExcluirReviewRequest(id, currentToken);
+        String jsonRequest = GSON.toJson(req);
+
+        System.out.println("Enviando: " + jsonRequest);
+        out.println(jsonRequest);
+
+        String jsonResponse = in.readLine();
+        System.out.println("Servidor retornou: " + jsonResponse);
+
+        if (jsonResponse != null) {
+            try {
+                ResponsePadrao res = GSON.fromJson(jsonResponse, ResponsePadrao.class);
+
+                if ("200".equals(res.status)) {
+                    System.out.println(res.mensagem);
+                } else {
+                    System.err.println(res.mensagem);
+                }
+            } catch (Exception e) {
+                System.err.println("Erro ao processar resposta: " + e.getMessage());
+            }
+        }
+    }
+
 }
