@@ -266,4 +266,43 @@ public class FilmeRepository {
         salvarFilmes();
         return true;
     }
+
+    /**
+     * Recalcula a nota do filme baseado nas reviews existentes.
+     * Chamado após criação, edição ou exclusão de review.
+     *
+     * @param idFilme ID do filme
+     * @param novaMedia Nova média calculada
+     * @param novaQtd Nova quantidade de avaliações
+     * @return true se sucesso, false se filme não encontrado
+     */
+    public boolean recalcularNota(int idFilme, double novaMedia, int novaQtd) {
+        Filme filmeAntigo = findById(idFilme);
+        if (filmeAntigo == null) {
+            return false;
+        }
+
+        // Remove filme antigo
+        filmes.remove(filmeAntigo.getChaveUnica());
+
+        // Cria filme atualizado com nova nota
+        Filme filmeAtualizado = new Filme(
+                filmeAntigo.getId(),
+                filmeAntigo.getTitulo(),
+                filmeAntigo.getDiretor(),
+                filmeAntigo.getAno(),
+                filmeAntigo.getGenero(),
+                filmeAntigo.getSinopse(),
+                novaMedia,
+                novaQtd
+        );
+
+        filmes.put(filmeAtualizado.getChaveUnica(), filmeAtualizado);
+        salvarFilmes();
+
+        System.out.println("-> Nota do filme ID " + idFilme + " recalculada: " +
+                String.format("%.1f", novaMedia) + " (" + novaQtd + " avaliações)");
+
+        return true;
+    }
 }

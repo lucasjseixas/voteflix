@@ -183,6 +183,26 @@ public class ServerConnection extends Thread {
                             finalResponse = SERVICE.handleExcluirFilme(inputLine);
                             break;
 
+                        case "CRIAR_REVIEW":
+                            finalResponse = SERVICE.handleCriarReview(inputLine);
+                            break;
+
+                        case "LISTAR_REVIEWS_USUARIO":
+                            finalResponse = SERVICE.handleListarReviewsUsuario(inputLine);
+                            break;
+
+                        case "BUSCAR_FILME_ID":
+                            finalResponse = SERVICE.handleBuscarFilmeId(inputLine);
+                            break;
+
+                        case "EDITAR_REVIEW":
+                            finalResponse = SERVICE.handleEditarReview(inputLine);
+                            break;
+
+                        case "EXCLUIR_REVIEW":
+                            finalResponse = SERVICE.handleExcluirReview(inputLine);
+                            break;
+
                         default:
                             finalResponse = SERVICE.createStatusResponse("400");
                             break;

@@ -3,11 +3,13 @@ package voteflix.service;
 import com.google.gson.Gson;
 import voteflix.auth.Autenticacao;
 import voteflix.dto.FilmeDTO;
+import voteflix.dto.ReviewDTO;
 import voteflix.dto.UsuarioDTO;
 import voteflix.dto.request.*;
 import voteflix.dto.response.*;
 import voteflix.entity.*;
 import voteflix.repository.FilmeRepository;
+import voteflix.repository.ReviewRepository;
 import voteflix.repository.UsuarioRepository;
 import voteflix.session.SessionManager;
 import voteflix.util.GeneroFilme;
@@ -21,6 +23,7 @@ public class ServerService {
     private final UsuarioRepository usuarioRepository = new UsuarioRepository();
     private final FilmeRepository filmeRepository = new FilmeRepository();
     private final Autenticacao AUTH = new Autenticacao();
+    private final ReviewRepository reviewRepository = new ReviewRepository();
 
     public String createStatusResponse(String statusCode) {
         HttpStatus status = HttpStatus.fromCode(statusCode);
@@ -248,6 +251,9 @@ public class ServerService {
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
+            // Remove todas as reviews do usuário antes de exclui-lo
+            reviewRepository.deleteReviewsByUsuario(nomeUsuario);
+
             // Remove o usuário do repositório
             boolean sucesso = usuarioRepository.deleteUsuario(nomeUsuario);
 
@@ -451,6 +457,9 @@ public class ServerService {
                 HttpStatus status = HttpStatus.NOT_FOUND;
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
+
+            // Remove todas as reviews do usuário antes de exclui-lo
+            reviewRepository.deleteReviewsByUsuario(usuarioExcluir.getUsuario());
 
             boolean sucesso = usuarioRepository.deleteUsuarioById(idUsuario);
 
@@ -751,6 +760,9 @@ public class ServerService {
                 return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
             }
 
+            // Remove todas as reviews do filme antes de exclui-lo
+            reviewRepository.deleteReviewsByFilme(idFilme);
+
             boolean sucesso = filmeRepository.deleteFilme(idFilme);
 
             if (!sucesso) {
@@ -769,4 +781,368 @@ public class ServerService {
             return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
         }
     }
+
+    public String handleCriarReview(String jsonRequest) {
+        try {
+            CriarReviewRequest req = GSON.fromJson(jsonRequest, CriarReviewRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("-> CRIAR_REVIEW falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.review == null) {
+                System.out.println("-> CRIAR_REVIEW falhou: Dados da review ausentes (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("-> CRIAR_REVIEW falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String funcao = decodedJWT.getClaim("funcao").asString();
+            if ("admin".equals(funcao)) {
+                System.out.println("-> CRIAR_REVIEW falhou: Admin não pode criar reviews (403).");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String nomeUsuario = decodedJWT.getClaim("usuario").asString();
+
+            if (req.review.idFilme == null || req.review.idFilme.isEmpty() ||
+                    req.review.nota == null || req.review.nota.isEmpty() ||
+                    req.review.titulo == null || req.review.titulo.isEmpty()) {
+                System.out.println("-> CRIAR_REVIEW falhou: Campos obrigatórios ausentes (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            int idFilme;
+            int nota;
+            try {
+                idFilme = Integer.parseInt(req.review.idFilme);
+                nota = Integer.parseInt(req.review.nota);
+            } catch (NumberFormatException e) {
+                System.out.println("-> CRIAR_REVIEW falhou: ID ou nota inválidos (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (nota < 1 || nota > 5) {
+                System.out.println("-> CRIAR_REVIEW falhou: Nota deve estar entre 1 e 5 (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.review.descricao != null && req.review.descricao.length() > 250) {
+                System.out.println("-> CRIAR_REVIEW falhou: Descrição excede 250 caracteres (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            Filme filme = filmeRepository.findById(idFilme);
+            if (filme == null) {
+                System.out.println("-> CRIAR_REVIEW falhou: Filme não encontrado (404).");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String descricao = req.review.descricao != null ? req.review.descricao : "";
+
+            Review novaReview = reviewRepository.addReview(
+                    idFilme, nomeUsuario, nota, req.review.titulo, descricao
+            );
+
+            if (novaReview == null) {
+                System.out.println("-> CRIAR_REVIEW falhou: Usuário já tem review para este filme (409).");
+                HttpStatus status = HttpStatus.CONFLICT;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            // Atualiza nota do filme usando a fórmula: (M × n + x) / (n + 1)
+            double notaAtual = filme.getNota();
+            int qtdAtual = filme.getQtdAvaliacoes();
+            double novaMedia = (notaAtual * qtdAtual + nota) / (qtdAtual + 1.0);
+
+            filmeRepository.recalcularNota(idFilme, novaMedia, qtdAtual + 1);
+
+            System.out.println("-> CRIAR_REVIEW BEM-SUCEDIDO: ID " + novaReview.getId() +
+                    ", Filme: " + idFilme + ", Usuario: " + nomeUsuario);
+            HttpStatus status = HttpStatus.CREATED;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+
+        } catch (Exception e) {
+            System.err.println("-> Erro interno ao processar CRIAR_REVIEW: " + e.getMessage());
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+        }
+    }
+
+    public String handleListarReviewsUsuario(String jsonRequest) {
+        try {
+            ListarReviewsUsuarioRequest req = GSON.fromJson(jsonRequest, ListarReviewsUsuarioRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("-> LISTAR_REVIEWS_USUARIO falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("-> LISTAR_REVIEWS_USUARIO falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String nomeUsuario = decodedJWT.getClaim("usuario").asString();
+            List<ReviewDTO> reviews = reviewRepository.getReviewsByUsuario(nomeUsuario);
+
+            System.out.println("-> LISTAR_REVIEWS_USUARIO BEM-SUCEDIDO: " + reviews.size() +
+                    " review(s) do usuário '" + nomeUsuario + "'");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ListarReviewsUsuarioResponse(
+                    status.getCode(), status.getMessage(), reviews
+            ));
+
+        } catch (Exception e) {
+            System.err.println("-> Erro interno ao processar LISTAR_REVIEWS_USUARIO: " + e.getMessage());
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+        }
+    }
+
+    public String handleBuscarFilmeId(String jsonRequest) {
+        try {
+            BuscarFilmeIdRequest req = GSON.fromJson(jsonRequest, BuscarFilmeIdRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("-> BUSCAR_FILME_ID falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.idFilme == null || req.idFilme.isEmpty()) {
+                System.out.println("-> BUSCAR_FILME_ID falhou: ID do filme ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("-> BUSCAR_FILME_ID falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            int idFilme;
+            try {
+                idFilme = Integer.parseInt(req.idFilme);
+            } catch (NumberFormatException e) {
+                System.out.println("-> BUSCAR_FILME_ID falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            Filme filme = filmeRepository.findById(idFilme);
+            if (filme == null) {
+                System.out.println("-> BUSCAR_FILME_ID falhou: Filme não encontrado (404).");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            FilmeDTO filmeDTO = new FilmeDTO(
+                    String.valueOf(filme.getId()),
+                    filme.getTitulo(),
+                    filme.getDiretor(),
+                    filme.getAno(),
+                    filme.getGenero(),
+                    filme.getSinopse(),
+                    String.format("%.1f", filme.getNota()).replace(",", "."),
+                    String.valueOf(filme.getQtdAvaliacoes())
+            );
+
+            List<ReviewDTO> reviews = reviewRepository.getReviewsByFilme(idFilme);
+
+            System.out.println("-> BUSCAR_FILME_ID BEM-SUCEDIDO: Filme ID " + idFilme +
+                    " com " + reviews.size() + " review(s)");
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new BuscarFilmeIdResponse(
+                    status.getCode(), status.getMessage(), filmeDTO, reviews
+            ));
+
+        } catch (Exception e) {
+            System.err.println("-> Erro interno ao processar BUSCAR_FILME_ID: " + e.getMessage());
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+        }
+    }
+
+    public String handleEditarReview(String jsonRequest) {
+        try {
+            EditarReviewRequest req = GSON.fromJson(jsonRequest, EditarReviewRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("-> EDITAR_REVIEW falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.review == null || req.review.id == null || req.review.id.isEmpty()) {
+                System.out.println("-> EDITAR_REVIEW falhou: ID da review ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("-> EDITAR_REVIEW falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            int idReview;
+            int nota;
+            try {
+                idReview = Integer.parseInt(req.review.id);
+                nota = Integer.parseInt(req.review.nota);
+            } catch (NumberFormatException e) {
+                System.out.println("-> EDITAR_REVIEW falhou: ID ou nota inválidos (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (nota < 1 || nota > 5) {
+                System.out.println("-> EDITAR_REVIEW falhou: Nota deve estar entre 1 e 5 (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.review.descricao != null && req.review.descricao.length() > 250) {
+                System.out.println("-> EDITAR_REVIEW falhou: Descrição excede 250 caracteres (405).");
+                HttpStatus status = HttpStatus.INVALID_FIELDS;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            Review reviewAntiga = reviewRepository.findById(idReview);
+            if (reviewAntiga == null) {
+                System.out.println("-> EDITAR_REVIEW falhou: Review não encontrada (404).");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String nomeUsuario = decodedJWT.getClaim("usuario").asString();
+            String funcao = decodedJWT.getClaim("funcao").asString();
+
+            // Verifica permissão: usuário deve ser dono ou admin
+            if (!reviewAntiga.getNomeUsuario().equals(nomeUsuario) && !"admin".equals(funcao)) {
+                System.out.println("-> EDITAR_REVIEW falhou: Usuário não é dono da review (403).");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String titulo = req.review.titulo != null ? req.review.titulo : reviewAntiga.getTitulo();
+            String descricao = req.review.descricao != null ? req.review.descricao : reviewAntiga.getDescricao();
+
+            boolean sucesso = reviewRepository.updateReview(idReview, nota, titulo, descricao);
+            if (!sucesso) {
+                System.out.println("-> EDITAR_REVIEW falhou: Erro ao atualizar (500).");
+                HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            // Recalcula nota do filme
+            int idFilme = reviewAntiga.getIdFilme();
+            double[] stats = reviewRepository.getFilmeStats(idFilme);
+            filmeRepository.recalcularNota(idFilme, stats[0], (int)stats[1]);
+
+            System.out.println("-> EDITAR_REVIEW BEM-SUCEDIDO: ID " + idReview);
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+
+        } catch (Exception e) {
+            System.err.println("-> Erro interno ao processar EDITAR_REVIEW: " + e.getMessage());
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+        }
+    }
+
+    public String handleExcluirReview(String jsonRequest) {
+        try {
+            ExcluirReviewRequest req = GSON.fromJson(jsonRequest, ExcluirReviewRequest.class);
+
+            if (req.token == null || req.token.isEmpty()) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: Token ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            if (req.id == null || req.id.isEmpty()) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: ID ausente (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            com.auth0.jwt.interfaces.DecodedJWT decodedJWT = AUTH.validateToken(req.token);
+            if (decodedJWT == null) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: Token inválido ou expirado (401).");
+                HttpStatus status = HttpStatus.UNAUTHORIZED;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            int idReview;
+            try {
+                idReview = Integer.parseInt(req.id);
+            } catch (NumberFormatException e) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: ID inválido (422).");
+                HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            Review review = reviewRepository.findById(idReview);
+            if (review == null) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: Review não encontrada (404).");
+                HttpStatus status = HttpStatus.NOT_FOUND;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            String nomeUsuario = decodedJWT.getClaim("usuario").asString();
+            String funcao = decodedJWT.getClaim("funcao").asString();
+
+            // Verifica permissão: usuário deve ser dono ou admin
+            if (!review.getNomeUsuario().equals(nomeUsuario) && !"admin".equals(funcao)) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: Usuário não é dono da review (403).");
+                HttpStatus status = HttpStatus.FORBIDDEN;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            int idFilme = review.getIdFilme();
+
+            boolean sucesso = reviewRepository.deleteReview(idReview);
+            if (!sucesso) {
+                System.out.println("-> EXCLUIR_REVIEW falhou: Erro ao excluir (500).");
+                HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+                return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+            }
+
+            // Recalcula nota do filme
+            double[] stats = reviewRepository.getFilmeStats(idFilme);
+            filmeRepository.recalcularNota(idFilme, stats[0], (int)stats[1]);
+
+            System.out.println("-> EXCLUIR_REVIEW BEM-SUCEDIDO: ID " + idReview);
+            HttpStatus status = HttpStatus.OK;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+
+        } catch (Exception e) {
+            System.err.println("-> Erro interno ao processar EXCLUIR_REVIEW: " + e.getMessage());
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            return GSON.toJson(new ResponsePadrao(status.getCode(), status.getMessage()));
+        }
+    }
+
 }

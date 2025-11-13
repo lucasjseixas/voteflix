@@ -11,32 +11,5 @@
     "sinopse": "eleifend donec ut dolor morbi vel lectus in quam fringilla rhoncus mauris enim leo rhoncus sed vestibulum sit amet cursus",
     "nota": "5.1",
     "qtd_avaliacoes": "77"
-  },
-  {
-    "id": "2",
-    "titulo": "Postman Blues",
-    "diretor": "Dione Van Hault",
-    "ano": "1995",
-    "genero": [
-      "Ação",
-      "Comedia",
-      "Crime",
-      "Drama"
-    ],
-    "sinopse": "lacus at velit vivamus vel nulla eget eros elementum pellentesque quisque porta volutpat erat quisque erat",
-    "nota": "8.3",
-    "qtd_avaliacoes": "79"
-  },
-  {
-    "id": "1",
-    "titulo": "Dont Make Waves",
-    "diretor": "Jessey Ramiro",
-    "ano": "2001",
-    "genero": [
-      "Comedia"
-    ],
-    "sinopse": "ultrices mattis odio donec vitae nisi nam ultrices libero non mattis pulvinar nulla pede ullamcorper augue a",
-    "nota": "9.1",
-    "qtd_avaliacoes": "18"
   }
 ]
