@@ -842,9 +842,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * Cria uma nova review para um filme.
-     */
     public void handleCriarReview() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -912,9 +909,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * Lista todas as reviews do usuário logado.
-     */
     public void handleListarMinhasReviews() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -963,9 +957,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * Busca um filme por ID e exibe suas reviews.
-     */
     public void handleBuscarFilmeComReviews() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -1036,9 +1027,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * Edita uma review existente do usuário.
-     */
     public void handleEditarReview() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");
@@ -1106,9 +1094,6 @@ public class ClientService {
         }
     }
 
-    /**
-     * Exclui uma review do usuário.
-     */
     public void handleExcluirReview() throws IOException {
         if (currentToken == null) {
             System.out.println("Você precisa estar logado para executar esta operação.");

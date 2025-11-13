@@ -68,7 +68,7 @@ public class ClientConnection {
                     default:
                         System.out.println("Opcao invalida. Tente novamente.");
                 }
-            } else  {
+            } else {
                 // ADMIN LOGADO --> Qualquer usuário logado --> mudanca dia 12/11
                 switch (choice) {
                     case "1":
@@ -93,11 +93,7 @@ public class ClientConnection {
                         service.handleExcluirFilme();
                         break;
                     case "8":
-                        service.handleLogout();
-                        if (service.getCurrentToken() == null) {
-                            System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
-                            running = false;
-                        }
+                        service.handleBuscarFilmeComReviews();
                         break;
                     case "9":
                         service.handleListarProprioUsuario();
@@ -113,9 +109,18 @@ public class ClientConnection {
                         }
                         break;
                     case "12":
-                        service.handleVerFilmes();
+                        service.handleCriarReview();
                         break;
                     case "13":
+                        service.handleListarMinhasReviews();
+                        break;
+                    case "14":
+                        service.handleEditarReview();
+                        break;
+                    case "15":
+                        service.handleExcluirReview();
+                        break;
+                    case "16":
                         service.handleLogout();
                         if (service.getCurrentToken() == null) {
                             System.out.println("\n>>> Logout bem-sucedido. Encerrando...");
@@ -172,22 +177,28 @@ public class ClientConnection {
             System.out.println("4. Desconectar");
         } else {
             System.out.println("\n--- MENU ---");
-            System.out.println("== Operações Administrativas ==");
+            System.out.println("\n--- OPERACOES ADMINISTRATIVAS ---");
             System.out.println("1. Listar Todos os Usuários");
             System.out.println("2. Editar Usuário (por ID)");
             System.out.println("3. Excluir Usuário (por ID)");
             System.out.println("");
-            System.out.println("== Gerenciar Filmes ==");
+            System.out.println("\n--- OPERACOES DE FILMES ---");
             System.out.println("4. Ver Catálogo de Filmes");
             System.out.println("5. Adicionar Filme");
             System.out.println("6. Editar Filme");
             System.out.println("7. Excluir Filme");
+            System.out.println("8. Buscar Filme por ID");
             System.out.println("");
-            System.out.println("8. Logout");
             System.out.println("9. Listar Meus Dados");
             System.out.println("10. Atualizar Senha");
             System.out.println("11. Excluir Conta");
-            System.out.println("12. Ver Catálogo de Filmes");
+            System.out.println("\n--- OPERACOES DE REVIEW ---");
+            System.out.println("12. Criar Review");
+            System.out.println("13. Listar Minhas Reviews");
+            System.out.println("14. Editar Reviews");
+            System.out.println("15. Excluir Reviews");
+            System.out.println("16. Logout");
+
         }
 //        } else {
 //            System.out.println("\n--- MENU USUÁRIO (LOGADO)---");
