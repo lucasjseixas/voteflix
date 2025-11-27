@@ -256,7 +256,7 @@ public class ServerConnection extends Thread {
         } catch (IOException e) {
             log("Problema com Servidor de Comunicacao: " + e.getMessage());
         }
-    }
+    }   
 
     // Metodo auxiliar para logar JSON enviado
     private void logJsonEnviado(String json, String clientIP, int clientPort) {

@@ -941,6 +941,7 @@ public class ClientService {
                             System.out.println("║ ID: " + review.id + " | Filme ID: " + review.idFilme + " | Nota: " + review.nota + "/5");
                             System.out.println("║ Título: " + review.titulo);
                             System.out.println("║ Descrição: " + (review.descricao.isEmpty() ? "(sem descrição)" : review.descricao));
+                            System.out.println("║ Data: " + review.data + " | Editado: " + ("true".equals(review.editado) ? "Sim" : "Não"));
                             System.out.println("║");
                             System.out.println("╠═══════════════════════════════════════════════════════════════╣");
                         }
@@ -1011,6 +1012,7 @@ public class ClientService {
                             if (!review.descricao.isEmpty()) {
                                 System.out.println("║ Descrição: " + review.descricao);
                             }
+                            System.out.println("║ Data: " + review.data + " | Editado: " + ("true".equals(review.editado) ? "Sim" : "Não"));
                             System.out.println("║");
                             System.out.println("╠═══════════════════════════════════════════════════════════════╣");
                         }

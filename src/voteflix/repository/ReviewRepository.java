@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.ArrayList;
@@ -70,13 +72,22 @@ public class ReviewRepository {
                 int idFilme = Integer.parseInt(dto.idFilme);
                 int nota = Integer.parseInt(dto.nota);
 
+                // PARSE dos novos campos
+                String data = (dto.data != null && !dto.data.isEmpty())
+                        ? dto.data
+                        : LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+                boolean editado = "true".equalsIgnoreCase(dto.editado);
+
                 Review review = new Review(
                         id,
                         idFilme,
                         dto.nomeUsuario,
                         nota,
                         dto.titulo,
-                        dto.descricao
+                        dto.descricao,
+                        data,
+                        editado
                 );
 
                 reviews.put(id, review);
@@ -116,7 +127,9 @@ public class ReviewRepository {
                         review.getNomeUsuario(),
                         String.valueOf(review.getNota()),
                         review.getTitulo(),
-                        review.getDescricao()
+                        review.getDescricao(),
+                        review.getData(),
+                        String.valueOf(review.isEditado())
                 ));
             }
 
@@ -168,7 +181,9 @@ public class ReviewRepository {
                         r.getNomeUsuario(),
                         String.valueOf(r.getNota()),
                         r.getTitulo(),
-                        r.getDescricao()
+                        r.getDescricao(),
+                        r.getData(),
+                        String.valueOf(r.isEditado())
                 ))
                 .collect(Collectors.toList());
     }
@@ -185,7 +200,9 @@ public class ReviewRepository {
                         r.getNomeUsuario(),
                         String.valueOf(r.getNota()),
                         r.getTitulo(),
-                        r.getDescricao()
+                        r.getDescricao(),
+                        r.getData(),
+                        String.valueOf(r.isEditado())
                 ))
                 .collect(Collectors.toList());
     }
