@@ -23,6 +23,7 @@ import voteflix.dto.request.BuscarFilmeIdRequest;
 import voteflix.dto.response.ListarReviewsUsuarioResponse;
 import voteflix.dto.response.BuscarFilmeIdResponse;
 
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -530,25 +531,27 @@ public class ClientGUI extends JFrame {
             addOperationButton("Excluir Usuário (por ID)", this::handleDeleteUser);
             addSeparator("GERENCIAR FILMES");
             addOperationButton("Adicionar Filme", this::handleAdicionarFilme);
+            addOperationButton("Buscar Filme por ID", this::handleBuscarFilmeComReviews);
             addOperationButton("Editar Filme", this::handleEditarFilme);
             addOperationButton("Excluir Filme", this::handleExcluirFilme);
             addOperationButton("Criar Review", this::handleCriarReview);
+            addSeparator("GERENCIAR REVIEWS");
             addOperationButton("Listar Minhas Reviews", this::handleListarMinhasReviews);
             addOperationButton("Editar Review", this::handleEditarReview);
             addOperationButton("Excluir Review", this::handleExcluirReview);
             addSeparator("MINHA CONTA");
-
             addOperationButton("Listar Meus Dados", this::handleListMyself);
             addOperationButton("Atualizar Senha", this::handleUpdatePassword);
             addOperationButton("Excluir Conta", this::handleDeleteAccount);
         } else {
+            addSeparator("GERENCIAR FILMES");
+            addOperationButton("Buscar Filme por ID", this::handleBuscarFilmeComReviews);
             addSeparator("MINHAS REVIEWS");
             addOperationButton("Criar Review", this::handleCriarReview);
             addOperationButton("Listar Minhas Reviews", this::handleListarMinhasReviews);
             addOperationButton("Editar Review", this::handleEditarReview);
             addOperationButton("Excluir Review", this::handleExcluirReview);
             addSeparator("MINHA CONTA");
-
             addOperationButton("Listar Meus Dados", this::handleListMyself);
             addOperationButton("Atualizar Senha", this::handleUpdatePassword);
             addOperationButton("Excluir Conta", this::handleDeleteAccount);
@@ -1408,52 +1411,66 @@ public class ClientGUI extends JFrame {
     private void handleCriarReview() {
         if (currentToken == null) return;
 
-        new Thread(() -> {
-            try {
-                // 1. Listar filmes primeiro
-                ListarFilmesRequest reqListar = new ListarFilmesRequest(currentToken);
-                out.println(GSON.toJson(reqListar));
-                String jsonResponseListar = in.readLine();
+        JDialog dialog = new JDialog(this, "Criar Review", true);
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
 
-                ListarFilmesResponse resListar = GSON.fromJson(jsonResponseListar, ListarFilmesResponse.class);
+        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-                if (!"200".equals(resListar.status) || resListar.filmes == null || resListar.filmes.isEmpty()) {
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(this,
-                                "Nenhum filme disponível para avaliar.",
-                                "Aviso", JOptionPane.INFORMATION_MESSAGE);
-                    });
-                    return;
-                }
+        JTextField idFilmeField = new JTextField();
+        JSpinner notaSpinner = new JSpinner(new SpinnerNumberModel(3, 1, 5, 1));
+        JTextField tituloField = new JTextField();
+        JTextArea descArea = new JTextArea(3, 20);
+        descArea.setLineWrap(true);
 
-                // 2. Mostrar diálogo de seleção
-                SwingUtilities.invokeLater(() -> {
-                    String[] opcoes = new String[resListar.filmes.size()];
-                    for (int i = 0; i < resListar.filmes.size(); i++) {
-                        FilmeDTO f = resListar.filmes.get(i);
-                        opcoes[i] = "ID " + f.id + " - " + f.titulo + " (" + f.ano + ")";
-                    }
+        formPanel.add(new JLabel("ID do Filme:"));
+        formPanel.add(idFilmeField);
+        formPanel.add(new JLabel("Nota (1-5):"));
+        formPanel.add(notaSpinner);
+        formPanel.add(new JLabel("Título:"));
+        formPanel.add(tituloField);
+        formPanel.add(new JLabel("Descrição (max 250):"));
+        formPanel.add(new JScrollPane(descArea));
 
-                    String escolha = (String) JOptionPane.showInputDialog(
-                            this,
-                            "Selecione o filme para avaliar:",
-                            "Criar Review",
-                            JOptionPane.QUESTION_MESSAGE,
-                            null,
-                            opcoes,
-                            opcoes[0]
-                    );
+        dialog.add(formPanel, BorderLayout.CENTER);
 
-                    if (escolha != null) {
-                        String idFilme = escolha.substring(3, escolha.indexOf(" -"));
-                        mostrarFormularioCriarReview(idFilme);
-                    }
-                });
+        JPanel buttonPanel = new JPanel();
+        JButton salvarButton = new JButton("Criar Review");
+        JButton cancelarButton = new JButton("Cancelar");
 
-            } catch (IOException e) {
-                addLog("ERRO ao buscar filmes: " + e.getMessage());
+        salvarButton.addActionListener(e -> {
+            String idFilme = idFilmeField.getText().trim();
+            String nota = notaSpinner.getValue().toString();
+            String titulo = tituloField.getText().trim();
+            String descricao = descArea.getText().trim();
+
+            if (idFilme.isEmpty() || titulo.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog,
+                        "ID do filme e título são obrigatórios!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-        }).start();
+
+            if (descricao.length() > 250) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Descrição não pode exceder 250 caracteres!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            dialog.dispose();
+            enviarCriarReview(idFilme, nota, titulo, descricao);
+        });
+
+        cancelarButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(salvarButton);
+        buttonPanel.add(cancelarButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
     }
 
     private void mostrarFormularioCriarReview(String idFilme) {
@@ -1521,7 +1538,7 @@ public class ClientGUI extends JFrame {
         dialog.setVisible(true);
     }
 
-    private void enviarCriarReview(String idFilme, String titulo, String descricao, String nota) {
+    private void enviarCriarReview(String idFilme, String nota, String titulo, String descricao) {
         new Thread(() -> {
             try {
                 CriarReviewRequest.ReviewData reviewData = new CriarReviewRequest.ReviewData(
@@ -1530,18 +1547,10 @@ public class ClientGUI extends JFrame {
                 CriarReviewRequest request = new CriarReviewRequest(reviewData, currentToken);
                 String jsonRequest = GSON.toJson(request);
 
-                addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ ENVIANDO: CRIAR_REVIEW");
-                addLog("│ " + jsonRequest);
-                addLog("└" + "─".repeat(48) + "┘");
-
+                addLog("ENVIANDO: CRIAR_REVIEW");
                 out.println(jsonRequest);
                 String jsonResponse = in.readLine();
-
-                addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ RECEBIDO: RESPOSTA CRIAR_REVIEW");
-                addLog("│ " + jsonResponse);
-                addLog("└" + "─".repeat(48) + "┘");
+                addLog("RECEBIDO: " + jsonResponse);
 
                 ResponsePadrao response = GSON.fromJson(jsonResponse, ResponsePadrao.class);
                 HttpStatus status = HttpStatus.fromCode(response.status);
@@ -1557,7 +1566,6 @@ public class ClientGUI extends JFrame {
             }
         }).start();
     }
-
     private void handleListarMinhasReviews() {
         if (currentToken == null) return;
 
@@ -1566,35 +1574,59 @@ public class ClientGUI extends JFrame {
                 ListarReviewsUsuarioRequest request = new ListarReviewsUsuarioRequest(currentToken);
                 String jsonRequest = GSON.toJson(request);
 
-                addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ ENVIANDO: LISTAR_REVIEWS_USUARIO");
-                addLog("│ " + jsonRequest);
-                addLog("└" + "─".repeat(48) + "┘");
-
+                addLog("ENVIANDO: LISTAR_REVIEWS_USUARIO");
                 out.println(jsonRequest);
                 String jsonResponse = in.readLine();
-
-                addLog("\n┌" + "─".repeat(48) + "┐");
-                addLog("│ RECEBIDO: RESPOSTA LISTAR_REVIEWS_USUARIO");
-                addLog("│ " + jsonResponse);
-                addLog("└" + "─".repeat(48) + "┘");
+                addLog("RECEBIDO: " + jsonResponse);
 
                 ListarReviewsUsuarioResponse response = GSON.fromJson(jsonResponse, ListarReviewsUsuarioResponse.class);
-                HttpStatus status = HttpStatus.fromCode(response.status);
 
-                SwingUtilities.invokeLater(() -> {
-                    if (status == HttpStatus.OK && response.reviews != null) {
-                        mostrarDialogoMinhasReviews(response.reviews);
-                    } else {
-                        JOptionPane.showMessageDialog(this, status.getMessage(),
+                if ("200".equals(response.status)) {
+                    SwingUtilities.invokeLater(() -> {
+                        mostrarMinhasReviews(response.reviews);
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, response.mensagem,
                                 "Erro", JOptionPane.ERROR_MESSAGE);
-                    }
-                });
-
+                    });
+                }
             } catch (IOException e) {
                 addLog("ERRO: " + e.getMessage());
             }
         }).start();
+    }
+    private void mostrarMinhasReviews(List<ReviewDTO> reviews) {
+        JDialog dialog = new JDialog(this, "Minhas Reviews", true);
+        dialog.setSize(800, 600);
+        dialog.setLocationRelativeTo(this);
+
+        if (reviews.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Você ainda não criou nenhuma review.", SwingConstants.CENTER);
+            emptyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+            dialog.add(emptyLabel, BorderLayout.CENTER);
+        } else {
+            JPanel reviewsPanel = new JPanel();
+            reviewsPanel.setLayout(new BoxLayout(reviewsPanel, BoxLayout.Y_AXIS));
+            reviewsPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+            for (ReviewDTO review : reviews) {
+                JPanel reviewCard = criarCardReview(review);
+                reviewsPanel.add(reviewCard);
+                reviewsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            }
+
+            JScrollPane scrollPane = new JScrollPane(reviewsPanel);
+            dialog.add(scrollPane, BorderLayout.CENTER);
+        }
+
+        JButton closeButton = new JButton("Fechar");
+        closeButton.addActionListener(e -> dialog.dispose());
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
     }
 
     private void mostrarDialogoMinhasReviews(java.util.List<ReviewDTO> reviews) {
@@ -1641,67 +1673,37 @@ public class ClientGUI extends JFrame {
                 new EmptyBorder(10, 10, 10, 10)
         ));
         card.setBackground(Color.WHITE);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
 
-        // Painel esquerdo - Info
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setBackground(Color.WHITE);
 
+        JLabel userLabel = new JLabel("👤 " + review.nomeUsuario);
+        userLabel.setFont(new Font("Arial", Font.BOLD, 14));
+
         JLabel tituloLabel = new JLabel(review.titulo);
-        tituloLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        tituloLabel.setForeground(new Color(100, 149, 237));
+        tituloLabel.setFont(new Font("Arial", Font.BOLD, 12));
 
-        JLabel filmeLabel = new JLabel("Filme ID: " + review.idFilme);
-        filmeLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        JLabel descLabel = new JLabel("<html>" + review.descricao + "</html>");
+        descLabel.setFont(new Font("Arial", Font.PLAIN, 11));
 
-        JLabel descricaoLabel = new JLabel("<html><p style='width:500px'>" +
-                (review.descricao.isEmpty() ? "(sem descrição)" : review.descricao) + "</p></html>");
-        descricaoLabel.setFont(new Font("Arial", Font.PLAIN, 11));
-
-        // ===== NOVO: Exibir data e status de edição =====
-        String editadoTexto = "true".equals(review.editado) ? "Editado" : "Original";
-        JLabel dataLabel = new JLabel("Data: " + review.data + " | Status: " + editadoTexto);
+        // ✅ CAMPOS NOVOS
+        JLabel dataLabel = new JLabel("📅 " + review.data +
+                ("true".equals(review.editado) ? " (editado)" : ""));
         dataLabel.setFont(new Font("Arial", Font.ITALIC, 10));
         dataLabel.setForeground(Color.GRAY);
-        // ===== FIM NOVO =====
 
+        infoPanel.add(userLabel);
         infoPanel.add(tituloLabel);
-        infoPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        infoPanel.add(filmeLabel);
-        infoPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        infoPanel.add(descricaoLabel);
-        infoPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        infoPanel.add(dataLabel); // NOVO
+        infoPanel.add(descLabel);
+        infoPanel.add(dataLabel);
 
-        // Painel direito - Nota
-        JPanel notaPanel = new JPanel();
-        notaPanel.setLayout(new BoxLayout(notaPanel, BoxLayout.Y_AXIS));
-        notaPanel.setBackground(Color.WHITE);
-        notaPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-
-        JLabel notaLabel = new JLabel(review.nota);
-        notaLabel.setFont(new Font("Arial", Font.BOLD, 36));
+        JLabel notaLabel = new JLabel("⭐ " + review.nota);
+        notaLabel.setFont(new Font("Arial", Font.BOLD, 20));
         notaLabel.setForeground(new Color(255, 165, 0));
-        notaLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel maxLabel = new JLabel("/ 5");
-        maxLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        maxLabel.setForeground(Color.GRAY);
-        maxLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel idLabel = new JLabel("Review ID: " + review.id);
-        idLabel.setFont(new Font("Monospaced", Font.PLAIN, 9));
-        idLabel.setForeground(Color.LIGHT_GRAY);
-        idLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        notaPanel.add(notaLabel);
-        notaPanel.add(maxLabel);
-        notaPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        notaPanel.add(idLabel);
 
         card.add(infoPanel, BorderLayout.CENTER);
-        card.add(notaPanel, BorderLayout.EAST);
+        card.add(notaLabel, BorderLayout.EAST);
 
         return card;
     }
@@ -1971,6 +1973,77 @@ public class ClientGUI extends JFrame {
         } catch (IOException e) {
             addLog("ERRO: " + e.getMessage());
         }
+    }
+
+    private void handleBuscarFilmeComReviews() {
+        if (currentToken == null) return;
+
+        String idFilme = JOptionPane.showInputDialog(this, "Digite o ID do filme:");
+        if (idFilme == null || idFilme.isEmpty()) return;
+
+        new Thread(() -> {
+            try {
+                BuscarFilmeIdRequest request = new BuscarFilmeIdRequest(idFilme, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("ENVIANDO: BUSCAR_FILME_ID");
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+                addLog("RECEBIDO: " + jsonResponse);
+
+                BuscarFilmeIdResponse response = GSON.fromJson(jsonResponse, BuscarFilmeIdResponse.class);
+
+                if ("200".equals(response.status)) {
+                    SwingUtilities.invokeLater(() -> {
+                        mostrarFilmeDetalhado(response.filme, response.reviews);
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, response.mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void mostrarFilmeDetalhado(FilmeDTO filme, List<ReviewDTO> reviews) {
+        JDialog dialog = new JDialog(this, "Detalhes do Filme", true);
+        dialog.setSize(900, 700);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        // Card do filme (já existe: criarCardFilme)
+        mainPanel.add(criarCardFilme(filme), BorderLayout.NORTH);
+
+        // Painel de reviews
+        JPanel reviewsPanel = new JPanel();
+        reviewsPanel.setLayout(new BoxLayout(reviewsPanel, BoxLayout.Y_AXIS));
+
+        JLabel reviewsTitle = new JLabel("═══ REVIEWS (" + reviews.size() + ") ═══");
+        reviewsTitle.setFont(new Font("Arial", Font.BOLD, 16));
+        reviewsTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        reviewsPanel.add(reviewsTitle);
+        reviewsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        for (ReviewDTO review : reviews) {
+            JPanel reviewCard = criarCardReview(review);
+            reviewsPanel.add(reviewCard);
+            reviewsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        }
+
+        JScrollPane scrollPane = new JScrollPane(reviewsPanel);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JButton closeButton = new JButton("Fechar");
+        closeButton.addActionListener(e -> dialog.dispose());
+        mainPanel.add(closeButton, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
     }
 
     public static void main(String[] args) {
