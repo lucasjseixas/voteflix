@@ -536,9 +536,10 @@ public class ClientGUI extends JFrame {
             addOperationButton("Excluir Filme", this::handleExcluirFilme);
             addOperationButton("Criar Review", this::handleCriarReview);
             addSeparator("GERENCIAR REVIEWS");
-            addOperationButton("Listar Minhas Reviews", this::handleListarMinhasReviews);
-            addOperationButton("Editar Review", this::handleEditarReview);
-            addOperationButton("Excluir Review", this::handleExcluirReview);
+            //addOperationButton("Listar Minhas Reviews", this::handleListarMinhasReviews);
+            //addOperationButton("Editar Review", this::handleEditarReview);
+            //addOperationButton("Excluir Review", this::handleExcluirReview);
+            addOperationButton("Excluir Reviews (Admin)", this::handleAdminExcluirReview);
             addSeparator("MINHA CONTA");
             addOperationButton("Listar Meus Dados", this::handleListMyself);
             addOperationButton("Atualizar Senha", this::handleUpdatePassword);
@@ -1566,6 +1567,7 @@ public class ClientGUI extends JFrame {
             }
         }).start();
     }
+
     private void handleListarMinhasReviews() {
         if (currentToken == null) return;
 
@@ -1596,6 +1598,7 @@ public class ClientGUI extends JFrame {
             }
         }).start();
     }
+
     private void mostrarMinhasReviews(List<ReviewDTO> reviews) {
         JDialog dialog = new JDialog(this, "Minhas Reviews", true);
         dialog.setSize(800, 600);
@@ -2044,6 +2047,96 @@ public class ClientGUI extends JFrame {
 
         dialog.add(mainPanel);
         dialog.setVisible(true);
+    }
+
+    private void handleAdminExcluirReview() {
+        if (currentToken == null || !"admin".equals(currentFuncao)) {
+            JOptionPane.showMessageDialog(this,
+                    "Esta operação é exclusiva para administradores.",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Passo 1: Pedir ID do filme
+        String idFilme = JOptionPane.showInputDialog(this,
+                "Digite o ID do filme para gerenciar suas reviews:");
+
+        if (idFilme == null || idFilme.isEmpty()) return;
+
+        new Thread(() -> {
+            try {
+                // Passo 2: Buscar filme e suas reviews
+                BuscarFilmeIdRequest request = new BuscarFilmeIdRequest(idFilme, currentToken);
+                String jsonRequest = GSON.toJson(request);
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ ENVIANDO: BUSCAR_FILME_ID (Admin)");
+                addLog("│ " + jsonRequest);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                out.println(jsonRequest);
+                String jsonResponse = in.readLine();
+
+                addLog("\n┌" + "─".repeat(48) + "┐");
+                addLog("│ RECEBIDO: RESPOSTA BUSCAR_FILME_ID");
+                addLog("│ " + jsonResponse);
+                addLog("└" + "─".repeat(48) + "┘");
+
+                BuscarFilmeIdResponse response = GSON.fromJson(jsonResponse, BuscarFilmeIdResponse.class);
+                HttpStatus status = HttpStatus.fromCode(response.status);
+
+                if (!status.isSuccess() || response.reviews == null || response.reviews.isEmpty()) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this,
+                                response.reviews == null || response.reviews.isEmpty() ?
+                                        "Este filme não possui reviews." : status.getMessage(),
+                                "Aviso", JOptionPane.INFORMATION_MESSAGE);
+                    });
+                    return;
+                }
+
+                // Passo 3: Mostrar reviews e permitir escolha
+                SwingUtilities.invokeLater(() -> {
+                    String[] opcoes = new String[response.reviews.size()];
+                    for (int i = 0; i < response.reviews.size(); i++) {
+                        ReviewDTO r = response.reviews.get(i);
+                        opcoes[i] = "ID " + r.id + " - " + r.nomeUsuario +
+                                " - " + r.titulo + " (Nota: " + r.nota + ")";
+                    }
+
+                    String escolha = (String) JOptionPane.showInputDialog(
+                            this,
+                            "Selecione a review a excluir:\n\nFilme: " + response.filme.titulo,
+                            "Admin - Excluir Review",
+                            JOptionPane.QUESTION_MESSAGE,
+                            null,
+                            opcoes,
+                            opcoes[0]
+                    );
+
+                    if (escolha != null) {
+                        // Extrai ID da review
+                        String idReview = escolha.substring(3, escolha.indexOf(" -"));
+
+                        // Confirmação
+                        int confirm = JOptionPane.showConfirmDialog(
+                                this,
+                                "Tem certeza que deseja excluir esta review?\n\n" + escolha,
+                                "Confirmar Exclusão",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.WARNING_MESSAGE
+                        );
+
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            enviarExcluirReview(idReview);
+                        }
+                    }
+                });
+
+            } catch (IOException e) {
+                addLog("ERRO: " + e.getMessage());
+            }
+        }).start();
     }
 
     public static void main(String[] args) {
